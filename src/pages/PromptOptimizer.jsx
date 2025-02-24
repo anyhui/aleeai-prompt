@@ -3,6 +3,7 @@ import { Box, Typography, TextField, Button, Card, CardContent, Grid, FormContro
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { transitions, borderRadius, blur, gradients, shadows } from '../styles/constants';
 import Slider from '@mui/material/Slider';
+import StatsCards from '../components/StatsCards';
 
 const defaultConfig = {
   apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
@@ -41,6 +42,7 @@ function PromptOptimizer() {
     error: null
   });
 
+  const [startTime, setStartTime] = useState(null);
   const [stats, setStats] = useState({
     promptTokens: 0,
     completionTokens: 0,
@@ -352,6 +354,8 @@ function PromptOptimizer() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let result = '';
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -362,8 +366,6 @@ function PromptOptimizer() {
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          if (!line.startsWith('data: ')) continue;
-          
           const data = line.slice(6).trim();
           if (data === '[DONE]') break;
           
@@ -376,20 +378,32 @@ function PromptOptimizer() {
                   ...prev,
                   analysis: result
                 }));
+
+                // 移除流式响应中的统计信息更新
+                if (json.usage) {
+                  totalPromptTokens = json.usage.prompt_tokens || 0;
+                  totalCompletionTokens = json.usage.completion_tokens || 0;
+                }
               }
             }
           } catch (error) {
             console.error('Failed to parse JSON:', error, 'Data:', data);
+            if (error.message.includes('429')) {
+              throw new Error('请求过于频繁，请稍后再试');
+            }
             throw new Error(`Invalid API response format: ${data}`);
           }
         }
       }
     }
 
+    // 最终更新统计信息
     setStats(prev => ({
       ...prev,
-      promptTokens: prev.promptTokens + result.length,
-      completionTokens: prev.completionTokens + result.length
+      model: config.model, // 添加模型信息用于费率计算
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      elapsedTime: Math.floor((Date.now() - startTime) / 1000)
     }));
 
     return result;
@@ -405,7 +419,7 @@ function PromptOptimizer() {
       },
       body: JSON.stringify({
         model: config.model,
-        // stream: true,
+        stream: true,
         messages: [
           {
             role: 'system',
@@ -425,22 +439,58 @@ function PromptOptimizer() {
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    if (!data || !data.usage || !data.choices || !data.choices[0]) {
-      throw new Error('API响应格式不正确');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          
+          try {
+            if (data) {
+              const json = JSON.parse(data);
+              if (json.choices?.[0]?.delta?.content) {
+                result += json.choices[0].delta.content;
+                setStepResults(prev => ({
+                  ...prev,
+                  decomposition: result
+                }));
+
+                if (json.usage) {
+                  totalPromptTokens = json.usage.prompt_tokens || 0;
+                  totalCompletionTokens = json.usage.completion_tokens || 0;
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to parse JSON:', error, 'Data:', data);
+            if (error.message.includes('429')) {
+              throw new Error('请求过于频繁，请稍后再试');
+            }
+            throw new Error(`Invalid API response format: ${data}`);
+          }
+        }
+      }
     }
 
     setStats(prev => ({
       ...prev,
-      promptTokens: prev.promptTokens + (data.usage?.prompt_tokens || 0),
-      completionTokens: prev.completionTokens + (data.usage?.completion_tokens || 0)
+      promptTokens: prev.promptTokens + totalPromptTokens,
+      completionTokens: prev.completionTokens + totalCompletionTokens
     }));
 
-    return data.choices[0].message?.content || '';
+    return result;
   };
 
   const suggestEnhancements = async (inputPrompt, tools_dict = {}) => {
@@ -453,7 +503,7 @@ function PromptOptimizer() {
       },
       body: JSON.stringify({
         model: config.model,
-        // stream: true,
+        stream: true,
         messages: [
           {
             role: 'system',
@@ -461,128 +511,64 @@ function PromptOptimizer() {
           },
           {
             role: 'user',
-            content: `        分析提供的提示词和可用的字典来推荐改进：
-
-        - **参考必要性：** 确定是否需要额外的参考材料来帮助完成任务（例如，网站、文档、书籍、文章等）
-        - **工具适用性：** 评估是否有可用工具可以提高效率或准确性
-        - **集成复杂度：** 评估整合建议资源所需的工作量
-        - **预期影响：** 估计对输出质量的潜在改进
-        
-        如果需要改进，请按以下格式提供结构化建议：
-        
-        ##参考建议##
-        （仅在适用时，最多3个）
-        - 参考名称/类型
-        - 目的：如何增强输出
-        - 集成：如何整合它
-        
-        ##工具建议##
-        （仅在适用时，最多3个）
-        - 来自字典的工具名称
-        - 目的：如何改进任务
-        - 集成：如何实现它
-        
-        如果没有能显著改进输出的改进建议，返回空字符串 ""
-
-        示例 1:
-        提示词: "编写一个Python函数来使用计算机视觉检测图像中的人脸。"
-        字典: {{}}
-        *输出*:
-        ## 参考建议 ##
-        - OpenCV人脸检测文档
-          目的：提供实现细节和最佳实践
-          集成：参考最优参数设置和级联分类器使用
-        
-        示例 2:
-        提示词: "写一首关于春天的俳句。"
-        字典: {{"textblob": "文本处理库", "gpt": "语言模型"}}
-        *输出*:
-        
-        
-        示例 3:
-        扩展提示词: "创建一个客户评论情感分析函数。"
-        字典: {{}}
-        *输出*:
-        ##REFERENCE SUGGESTIONS##
-        - VADER情感分析论文
-          目的：提供社交媒体文本情感分析的见解
-          集成：参考复合情感评分的理解
-        
-        示例 4:
-        扩展提示词: "为纽约生成天气预报报告。"
-        字典: {{"requests": "HTTP库", "json": "JSON解析器", "weather_api": "天气数据服务"}}
-        *输出*:
-        ##工具建议##
-        - weather_api
-          目的：提供实时天气数据
-          集成：使用API端点获取预报数据
-        - requests
-          目的：向天气API发送HTTP请求
-          集成：使用requests.get()获取天气数据
-        
-        示例 5:
-        扩展提示词: "计算一个数字的阶乘。"
-        字典: {{}}
-        *输出*:
-        
-
-        示例 6:
-        扩展提示词: "创建API端点文档。"
-        字典: {{"swagger": "API文档工具", "markdown": "文本格式化", "json_schema": "JSON模式验证器"}}
-        *输出*:
-        ##工具建议##
-        - OpenAPI规范
-          目的：提供标准API文档格式
-          集成：用作文档结构的模板
-        - REST API最佳实践
-          目的：确保文档遵循行业标准
-          集成：参考端点描述模式
-        
-        ##工具建议##
-        - swagger
-          目的：生成交互式API文档
-          集成：使用Swagger UI进行可视化文档
-        - json_schema
-          目的：验证API请求/响应模式
-          集成：定义和验证数据结构
-          
-        示例 7:
-        扩展提示词: "创建API端点文档。"
-        字典: {{}}
-        *输出*:
-        ## 参考建议 ##
-        - OpenAPI规范
-          目的：提供标准API文档格式
-          集成：用作文档结构的模板
-        - REST API最佳实践
-          目的：确保文档遵循行业标准
-          集成：参考端点描述模式
-
-
-        现在，分析以下提示和工具，然后仅返回生成的*输出*：        
-        字典：${tools_dict}
-        提示词：${inputPrompt}`
+            content: `分析提供的提示词和可用的字典来推荐改进：${inputPrompt}`
           }
         ]
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    if (!data || !data.usage || !data.choices || !data.choices[0]) {
-      throw new Error('API响应格式不正确');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          
+          try {
+            if (data) {
+              const json = JSON.parse(data);
+              if (json.choices?.[0]?.delta?.content) {
+                result += json.choices[0].delta.content;
+                setStepResults(prev => ({
+                  ...prev,
+                  suggestions: result
+                }));
+
+                if (json.usage) {
+                  totalPromptTokens = json.usage.prompt_tokens || 0;
+                  totalCompletionTokens = json.usage.completion_tokens || 0;
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to parse JSON:', error, 'Data:', data);
+            if (error.message.includes('429')) {
+              throw new Error('请求过于频繁，请稍后再试');
+            }
+            throw new Error(`Invalid API response format: ${data}`);
+          }
+        }
+      }
     }
 
     setStats(prev => ({
       ...prev,
-      promptTokens: prev.promptTokens + (data.usage?.prompt_tokens || 0),
-      completionTokens: prev.completionTokens + (data.usage?.completion_tokens || 0)
+      promptTokens: prev.promptTokens + totalPromptTokens,
+      completionTokens: prev.completionTokens + totalCompletionTokens
     }));
 
-    return data.choices[0].message?.content || '';
+    return result;
   };
 
   // 添加工具字典
@@ -610,62 +596,78 @@ function PromptOptimizer() {
   };
 
   const handleOptimize = async () => {
-    setLoading(true);
-    setError(null);
-    setOptimizedPrompt('');
-    setStepResults({
-      analysis: '',
-      suggestions: '',
-      decomposition: ''
-    });
-    setStats({
-      promptTokens: 0,
-      completionTokens: 0,
-      elapsedTime: 0
-    });
-
-    const startTime = performance.now();
+    if (!prompt) {
+      setError('请输入提示词');
+      return;
+    }
 
     try {
       validateConfig(config);
-      if (!prompt) {
-        throw new Error('请输入需要优化的提示词');
-      }
-
+      setLoading(true);
+      setError(null);
       setOptimizationStep('analyzing');
+      
+      // 重置统计数据
+      setStats({
+        promptTokens: 0,
+        completionTokens: 0,
+        elapsedTime: 0
+      });
+      setStartTime(Date.now());
+
+      // 分析和扩展输入
       const expandedPrompt = await analyzeAndExpandInput(prompt);
       setStepResults(prev => ({ ...prev, analysis: expandedPrompt }));
-
       setOptimizationStep('suggesting');
-      const enhancements = await suggestEnhancements(prompt, toolsDict);
+
+      // 建议改进
+      const enhancements = await suggestEnhancements(prompt);
       setStepResults(prev => ({ ...prev, suggestions: enhancements }));
-
       setOptimizationStep('decomposing');
-      const reasoning = await decomposeAndAddReasoning(expandedPrompt);
-      setStepResults(prev => ({ ...prev, decomposition: reasoning }));
 
-      setOptimizationStep('assembling');
-      const finalPrompt = assemblePrompt(stepResults);
-      setOptimizedPrompt(finalPrompt);
+      // 分解和添加推理
+      const decomposition = await decomposeAndAddReasoning(expandedPrompt);
+      setStepResults(prev => ({ ...prev, decomposition }));
 
-      const endTime = performance.now();
+      // 组装最终的优化提示词
+      const optimizedResult = [
+        expandedPrompt,
+        enhancements,
+        decomposition
+      ].filter(Boolean).join('\n\n');
+
+      setOptimizedPrompt(optimizedResult);
+      setOptimizationStep('done');
+
+      // 更新最终的时间统计
       setStats(prev => ({
         ...prev,
-        elapsedTime: ((endTime - startTime) / 1000).toFixed(2)
+        elapsedTime: Math.floor((Date.now() - startTime) / 1000)
       }));
 
-      setSnackbarMessage('提示词优化完成！');
-      setSnackbarSeverity('success');
     } catch (err) {
       setError(err.message);
-      setSnackbarMessage(`优化失败: ${err.message}`);
-      setSnackbarSeverity('error');
+      setOptimizationStep('error');
     } finally {
       setLoading(false);
-      setOptimizationStep('idle');
-      setSnackbarOpen(true);
     }
   };
+
+  // 更新计时器
+  React.useEffect(() => {
+    let timer;
+    if (startTime && optimizationStep !== 'completed' && optimizationStep !== 'error') {
+      timer = setInterval(() => {
+        setStats(prev => ({
+          ...prev,
+          elapsedTime: Math.floor((Date.now() - startTime) / 1000)
+        }));
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [startTime, optimizationStep]);
 
   const handleCopy = async () => {
     try {
@@ -708,6 +710,7 @@ function PromptOptimizer() {
 
   return (
     <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh' }}>
+      
       <Box sx={{ mb: { xs: 3, sm: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{
           fontSize: { xs: '1.75rem', sm: '2.5rem' },
@@ -862,6 +865,7 @@ function PromptOptimizer() {
                 优化后的提示词
               </Typography>
               <Box sx={{ width: '100%', mb: 2 }}>
+              <StatsCards stats={stats} />
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Box sx={{
                     width: '100%',
