@@ -637,7 +637,7 @@ function PromptOptimizer() {
       ].filter(Boolean).join('\n\n');
 
       setOptimizedPrompt(optimizedResult);
-      setOptimizationStep('done');
+      setOptimizationStep('completed');
 
       // 更新最终的时间统计
       setStats(prev => ({
