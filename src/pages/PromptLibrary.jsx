@@ -225,8 +225,9 @@ function PromptLibrary() {
                     </Typography>
                   </Box>
                   <IconButton 
-                    onClick={() => handleCopy(prompt.prompt)}
+                    onClick={() => prompt?.prompt ? handleCopy(prompt.prompt) : null}
                     size="small"
+                    disabled={!prompt?.prompt}
                     sx={{ ml: 1 }}
                   >
                     <ContentCopyIcon />

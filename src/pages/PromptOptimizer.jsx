@@ -604,6 +604,11 @@ function PromptOptimizer() {
     throw new Error(`Function ${functionName} not found`);
   };
 
+  const assemblePrompt = (components) => {
+    const { analysis, suggestions, decomposition } = components;
+    return `${analysis}\n\n${suggestions}\n\n${decomposition}`;
+  };
+
   const handleOptimize = async () => {
     setLoading(true);
     setError(null);
@@ -619,77 +624,63 @@ function PromptOptimizer() {
       elapsedTime: 0
     });
 
-    // 验证配置
+    const startTime = performance.now();
+
     try {
       validateConfig(config);
       if (!prompt) {
         throw new Error('请输入需要优化的提示词');
       }
-    } catch (error) {
-      setError(error.message);
-      setSnackbarMessage(error.message);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      setLoading(false);
-      return;
-    }
-  
-    const startTime = Date.now();
-  
-    try {
-      // 第一步：分析和扩展输入
+
       setOptimizationStep('analyzing');
       const expandedPrompt = await analyzeAndExpandInput(prompt);
+      setStepResults(prev => ({ ...prev, analysis: expandedPrompt }));
 
-      // 第二步：建议改进
       setOptimizationStep('suggesting');
-      const suggestions = await suggestEnhancements(prompt, toolsDict);
+      const enhancements = await suggestEnhancements(prompt, toolsDict);
+      setStepResults(prev => ({ ...prev, suggestions: enhancements }));
 
-      // 第三步：分解和推理
       setOptimizationStep('decomposing');
-      const decomposition = await decomposeAndAddReasoning(expandedPrompt);
+      const reasoning = await decomposeAndAddReasoning(expandedPrompt);
+      setStepResults(prev => ({ ...prev, decomposition: reasoning }));
 
-      // 组装最终结果
-      const finalPrompt = `${expandedPrompt}\n\n${suggestions}\n\n${decomposition}`;
+      setOptimizationStep('assembling');
+      const finalPrompt = assemblePrompt(stepResults);
       setOptimizedPrompt(finalPrompt);
 
-      // 完成所有步骤
-      setOptimizationStep('done');
+      const endTime = performance.now();
       setStats(prev => ({
         ...prev,
-        elapsedTime: (Date.now() - startTime) / 1000
+        elapsedTime: ((endTime - startTime) / 1000).toFixed(2)
       }));
 
-      setSnackbarMessage('提示词优化成功');
+      setSnackbarMessage('提示词优化完成！');
       setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (error) {
-      console.error('Error optimizing prompt:', error);
-      setError('优化提示词时发生错误，请检查配置信息或稍后重试');
-      setSnackbarMessage('优化失败');
+    } catch (err) {
+      setError(err.message);
+      setSnackbarMessage(`优化失败: ${err.message}`);
       setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-      setOptimizationStep('idle');
     } finally {
       setLoading(false);
+      setOptimizationStep('idle');
+      setSnackbarOpen(true);
     }
   };
 
   const handleCopy = async () => {
     try {
-      // 复制优化提示词的具体指南部分
-      const finalPrompt = stepResults.analysis.split('作为一个提示词优化专家')[1] || '';
-      if (!finalPrompt) {
-        throw new Error('未找到优化指南');
+      const textToCopy = stepResults.analysis + '\n\n' + stepResults.suggestions + '\n\n' + stepResults.decomposition;
+      if (!textToCopy) {
+        throw new Error('没有可复制的内容');
       }
       
       // 使用现代 Clipboard API
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(finalPrompt);
+        await navigator.clipboard.writeText(textToCopy);
       } else {
         // 备选方案：使用 document.execCommand
         const textArea = document.createElement('textarea');
-        textArea.value = finalPrompt;
+        textArea.value = textToCopy;
         textArea.style.position = 'fixed';  // 避免滚动到页面底部
         document.body.appendChild(textArea);
         textArea.select();
@@ -811,13 +802,12 @@ function PromptOptimizer() {
                     min={0}
                     max={2}
                     step={0.1}
-                    marks={[
-                      { value: 0, label: '精确' },
-                      { value: 1, label: '平衡' },
-                      { value: 2, label: '创造性' }
-                    ]}
                     valueLabelDisplay="auto"
+                    sx={{ width: '100%' }}
                   />
+                </Grid>
+                <Grid item xs={12}>
+                  <ConnectionStatus />
                 </Grid>
               </Grid>
             </CardContent>
