@@ -663,6 +663,12 @@ function PromptOptimizer() {
           elapsedTime: Math.floor((Date.now() - startTime) / 1000)
         }));
       }, 1000);
+    } else if (startTime && (optimizationStep === 'completed' || optimizationStep === 'error')) {
+      // 在优化完成或出错时，设置最终的执行时间
+      setStats(prev => ({
+        ...prev,
+        elapsedTime: Math.floor((Date.now() - startTime) / 1000)
+      }));
     }
     return () => {
       if (timer) clearInterval(timer);
