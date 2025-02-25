@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Grid, TextField, Button, Typography, Card, CardContent, Snackbar, Paper, Tab } from '@mui/material';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Box, Grid, Button, Typography, Card, CardContent, Snackbar, Paper, Tab, TextField } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { ContentPaper, CategoryTabs } from '../styles/PromptGenerator.styles';
-import { FlexBox, TemplateCard, TruncatedText, PresetButton } from '../styles/shared.styles';
-import LoadingScreen from '../components/LoadingScreen';
-import TemplateSelector from '../components/TemplateSelector';
+import { FlexBox, TemplateCard, TruncatedText } from '../styles/shared.styles';
+import { CardActionArea } from '@mui/material';
+import { PromptGeneratorSkeleton } from '../components/SkeletonLoader';
 import PromptForm from '../components/PromptForm';
-import { CardActionArea, FormControl } from '@mui/material';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 function PromptGenerator() {
-  // 将所有useState声明移到组件顶部
   const [templates, setTemplates] = useState({});
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +20,6 @@ function PromptGenerator() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [currentFields, setCurrentFields] = useState([]);
-  const [currentPresets, setCurrentPresets] = useState({});
   const [focusedField, setFocusedField] = useState(null);
 
   useEffect(() => {
@@ -47,63 +45,65 @@ function PromptGenerator() {
     loadPresets();
   }, []);
 
-  useEffect(() => {
-    if (!templates[selectedTemplate]) return;
-    
-    const templateFields = templates[selectedTemplate].fields;
-    const categoryFields = categories.find(c => c.id === selectedCategory)?.extraFields || [];
-    setCurrentFields([...templateFields, ...categoryFields]);
-    
-    const newFormData = {};
-    const allFieldIds = [...templateFields, ...categoryFields].map(f => f.id);
-    Object.keys(formData).forEach(key => {
-      if (allFieldIds.includes(key)) {
-        newFormData[key] = formData[key];
-      }
-    });
-    setFormData(newFormData);
-  }, [selectedTemplate, selectedCategory, formData, templates]);
-
-  if (loading) {
-    return <LoadingScreen />
-  }
-
-  const handlePresetClick = (fieldId, value) => {
+  const handlePresetClick = useCallback((fieldId, value) => {
     setFormData(prev => {
       const currentValue = prev[fieldId] || [];
       const isArray = Array.isArray(currentValue);
+      const field = currentFields.find(f => f.id === fieldId);
       
-      // 如果当前值不是数组，且字段有multiSelect属性，则转换为数组
-      if (!isArray && currentFields.find(f => f.id === fieldId)?.multiSelect) {
+      if (!isArray && field?.multiSelect) {
         return {
           ...prev,
           [fieldId]: currentValue ? [currentValue, value] : [value]
         };
       }
       
-      // 如果是数组（多选模式）
       if (isArray) {
         return {
           ...prev,
           [fieldId]: currentValue.includes(value)
-            ? currentValue.filter(v => v !== value) // 如果已选中则移除
-            : [...currentValue, value] // 如果未选中则添加
+            ? currentValue.filter(v => v !== value)
+            : [...currentValue, value]
         };
       }
       
-      // 单选模式，不再自动隐藏预设面板
       return {
         ...prev,
         [fieldId]: value
       };
     });
-  };
+  }, [currentFields]);
 
-  const handleInputChange = (field) => (event) => {
+  const currentTemplateFields = useMemo(() => {
+    if (!templates[selectedTemplate]) return [];
+    const templateFields = templates[selectedTemplate].fields;
+    const categoryFields = categories.find(c => c.id === selectedCategory)?.extraFields || [];
+    return [...templateFields, ...categoryFields];
+  }, [templates, selectedTemplate, selectedCategory, categories]);
+
+  const handleInputChange = useCallback((field) => (event) => {
     setFormData(prev => ({
       ...prev,
       [field]: event.target.value
-    }))
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!templates[selectedTemplate]) return;
+    setCurrentFields(currentTemplateFields);
+    
+    const newFormData = {};
+    const allFieldIds = currentTemplateFields.map(f => f.id);
+    Object.keys(formData).forEach(key => {
+      if (allFieldIds.includes(key)) {
+        newFormData[key] = formData[key];
+      }
+    });
+    setFormData(newFormData);
+  }, [currentTemplateFields, formData, templates, selectedTemplate]);
+
+  if (loading) {
+    return <PromptGeneratorSkeleton />
   }
 
   const handleTemplateChange = (template) => {
@@ -215,7 +215,8 @@ ${promptStructure.join('\n')}
   };
 
   return (
-    <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <ErrorBoundary>
+      <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ mb: { xs: 3, sm: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{
           fontSize: { xs: '1.75rem', sm: '2.5rem' },
@@ -292,131 +293,16 @@ ${promptStructure.join('\n')}
       </Paper>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        {currentFields.map((field, index) => (
-          <Grid item xs={12} md={6} key={field.id}>
-            <FormControl 
-              fullWidth 
-              sx={{ 
-                mb: field.presets || (field.presetsByCategory && field.presetsByCategory[selectedCategory]) ? 0.5 : 0,
-                position: 'relative',
-                '& + .MuiFormControl-root': {
-                  mt: field.presets || (field.presetsByCategory && field.presetsByCategory[selectedCategory]) ? 0.5 : 0
-                },
-                transition: 'all 0.3s ease-in-out'
-              }}
-            >
-              <TextField
-                fullWidth
-                label={field.label}
-                placeholder={`请输入${field.label}...`}
-                value={formData[field.id] || ''}
-                onChange={handleInputChange(field.id)}
-                onFocus={() => handleInputFocus(field.id)}
-                onBlur={handleInputBlur}
-                multiline={field.multiline}
-                rows={field.multiline ? 2 : 1}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <Box sx={{ color: 'text.secondary', mr: 1 }}>
-                      ✏️
-                    </Box>
-                  )
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    transition: 'all 0.3s ease-in-out',
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    padding: { xs: 1, sm: 1.5 },
-                    backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                    cursor: 'text',
-                    '&:hover': {
-                      backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
-                        borderWidth: '2px'
-                      }
-                    }
-                  },
-                  '& .MuiInputLabel-root': {
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    color: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)',
-                    fontWeight: 500
-                  },
-                  '& .MuiOutlinedInput-input': {
-                    padding: { xs: '0.75rem', sm: '1rem' },
-                    '&::placeholder': {
-                      color: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)',
-                      opacity: 1
-                    }
-                  },
-                  '& .MuiInputLabel-outlined': {
-                    transform: 'translate(14px, 12px) scale(1)'
-                  },
-                  '& .MuiInputLabel-outlined.MuiInputLabel-shrink': {
-                    transform: 'translate(14px, -6px) scale(0.75)',
-                    color: theme => theme.palette.primary.main,
-                    fontWeight: 600
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderRadius: 1.5,
-                    borderColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)',
-                    borderWidth: '1.5px',
-                    transition: 'all 0.3s ease-in-out'
-                  },
-                  '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: theme => theme.palette.primary.main,
-                    borderWidth: '2px',
-                    boxShadow: theme => `0 0 0 3px ${theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.15)'}`,
-                  }
-                }}
-              />
-              {(field.presets || (field.presetsByCategory && field.presetsByCategory[selectedCategory])) && (
-                <Box 
-                  sx={{
-                    mt: 1,
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    opacity: focusedField === field.id ? 1 : 0,
-                    visibility: focusedField === field.id ? 'visible' : 'hidden',
-                    transform: focusedField === field.id ? 'translateY(0)' : 'translateY(-10px)',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    backgroundColor: theme => theme.palette.background.paper,
-                    borderRadius: 1,
-                    padding: 1,
-                    boxShadow: theme => theme.palette.mode === 'dark' 
-                      ? '0 4px 20px 0 rgba(0,0,0,0.5)'
-                      : '0 4px 20px 0 rgba(0,0,0,0.1)',
-                    zIndex: 1000
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                  }}
-                >
-                  <FlexBox sx={{ gap: 1, flexWrap: 'wrap' }}>
-                    {(field.presetsByCategory?.[selectedCategory] || field.presets || []).map((preset, index) => (
-                      <PresetButton
-                        key={index}
-                        size="small"
-                        variant="outlined"
-                        selected={Array.isArray(formData[field.id])
-                          ? formData[field.id]?.includes(preset)
-                          : formData[field.id] === preset}
-                        onClick={() => {
-                          handlePresetClick(field.id, preset);
-                        }}
-                      >
-                        {preset}
-                      </PresetButton>
-                    ))}
-                  </FlexBox>
-                </Box>
-              )}
-            </FormControl>
-          </Grid>
-        ))}
+        <PromptForm
+          fields={currentFields}
+          formData={formData}
+          onInputChange={handleInputChange}
+          onPresetClick={handlePresetClick}
+          selectedCategory={selectedCategory}
+          focusedField={focusedField}
+          onInputFocus={handleInputFocus}
+          onInputBlur={handleInputBlur}
+        />
 
         <Grid item xs={12}>
           <Card className="output-card" sx={{ mb: 3, borderRadius: 2, boxShadow: theme => `0 8px 32px ${theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)'}` }}>
@@ -463,7 +349,7 @@ ${promptStructure.join('\n')}
         message="提示词已复制到剪贴板"
       />
     </Box>
-  )
-}
+  </ErrorBoundary>
+)}
 
 export default PromptGenerator

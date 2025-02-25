@@ -27,11 +27,11 @@
 ## 2. 进行中的任务
 
 ### 2.1 代码重构
-- [ ] 组件拆分优化
-  - [ ] 将 PromptGenerator 拆分为子组件
-  - [ ] 抽取 TemplateSelector 组件
-  - [ ] 抽取 PromptForm 组件
-  - [ ] 抽取 PresetButtons 组件
+- [x] 组件拆分优化
+  - [x] 将 PromptGenerator 拆分为子组件
+  - [x] 抽取 TemplateSelector 组件
+  - [x] 抽取 PromptForm 组件
+  - [x] 抽取 PresetButtons 组件
 - [ ] 状态管理优化
   - [ ] 引入 useReducer
   - [ ] 实现 Context API 全局状态

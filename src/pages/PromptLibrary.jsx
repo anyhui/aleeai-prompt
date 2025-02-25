@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Box, Typography, Grid, Card, CardContent, IconButton, Chip, Snackbar, CircularProgress, Alert, Popper, Paper, Fade } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import { transitions, borderRadius, blur, gradients, shadows } from '../styles/constants'
 import LoadingScreen from '../components/LoadingScreen'
+import { PromptLibrarySkeleton } from '../components/SkeletonLoader';
 
 function PromptLibrary() {
   const [prompts, setPrompts] = useState([])
@@ -49,54 +50,46 @@ function PromptLibrary() {
     loadPrompts()
   }, [])
 
-  useEffect(() => {
-    const filteredPrompts = prompts.filter(prompt =>
+  const filteredPrompts = useMemo(() => {
+    return prompts.filter(prompt =>
       selectedTags.length === 0 || 
       prompt.group?.some(tag => selectedTags.includes(tag))
-    )
-    setDisplayedPrompts(filteredPrompts.slice(0, page * itemsPerPage))
-    setHasMore(filteredPrompts.length > page * itemsPerPage)
-  }, [selectedTags, page, prompts])
-
-  const loadMore = useCallback(() => {
-    if (loadingMore || !hasMore) return
-    setLoadingMore(true)
-    setTimeout(() => {
-      setPage(prev => prev + 1)
-      setLoadingMore(false)
-    }, 500)
-  }, [loadingMore, hasMore])
+    );
+  }, [prompts, selectedTags]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100) {
-        loadMore()
-      }
-    }
+    setDisplayedPrompts(filteredPrompts.slice(0, page * itemsPerPage));
+    setHasMore(filteredPrompts.length > page * itemsPerPage);
+  }, [filteredPrompts, page, itemsPerPage]);
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [loadMore])
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    setTimeout(() => {
+      setPage(prev => prev + 1);
+      setLoadingMore(false);
+    }, 500);
+  }, [loadingMore, hasMore]);
 
-  const handleCopy = (text) => {
+  const handleCopy = useCallback((text) => {
     navigator.clipboard.writeText(text).then(() => {
-      setSnackbarOpen(true)
-    })
-  }
+      setSnackbarOpen(true);
+    });
+  }, []);
 
-  const handleTagClick = (tag) => {
+  const handleTagClick = useCallback((tag) => {
     setSelectedTags(prev =>
       prev.includes(tag)
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
-    )
-    setPage(1) // 重置页码
-  }
+    );
+    setPage(1);
+  }, []);
 
-  const handleMouseEnter = (event, prompt) => {
-    setHoveredPrompt(prompt)
-    setAnchorEl(event.currentTarget)
-  }
+  const handleMouseEnter = useCallback((event, prompt) => {
+    setHoveredPrompt(prompt);
+    setAnchorEl(event.currentTarget);
+  }, []);
 
   const handleMouseLeave = () => {
     setHoveredPrompt(null)
@@ -104,7 +97,7 @@ function PromptLibrary() {
   }
 
   if (loading) {
-    return <LoadingScreen />
+    return <PromptLibrarySkeleton />
   }
 
   if (error) {
@@ -116,7 +109,7 @@ function PromptLibrary() {
   }
 
   return (
-    <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh' }}>
+    <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh', position: 'relative' }}>
       <Box sx={{ mb: { xs: 3, sm: 4 } }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{
           fontSize: { xs: '1.75rem', sm: '2.5rem' },
@@ -257,8 +250,24 @@ function PromptLibrary() {
       </Grid>
 
       {loadingMore && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
-          <CircularProgress />
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'fixed',
+          bottom: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          backgroundColor: theme => theme.palette.background.paper,
+          borderRadius: 2,
+          padding: 2,
+          boxShadow: theme => `0 4px 20px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)'}`,
+        }}>
+          <CircularProgress size={24} sx={{ mr: 1 }} />
+          <Typography variant="body2" color="text.secondary">
+            加载更多...
+          </Typography>
         </Box>
       )}
 
