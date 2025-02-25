@@ -43,11 +43,26 @@ function App() {
         <CssBaseline />
         <RootBox>
           <StyledAppBar position="fixed">
-            <Toolbar sx={{ padding: '0.5rem 2rem', justifyContent: 'space-between' }}>
-              <StyledTitle variant="h6" component="div">
+            <Toolbar sx={{
+              padding: { xs: '0.5rem 1rem', sm: '0.5rem 2rem' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1, sm: 0 },
+              minHeight: { xs: 'auto', sm: '64px' }
+            }}>
+              <StyledTitle variant="h6" component="div" sx={{
+                width: { xs: '100%', sm: 'auto' },
+                textAlign: { xs: 'center', sm: 'left' }
+              }}>
                 AI提示词助手
               </StyledTitle>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
+              <Box sx={{
+                display: 'flex',
+                gap: 2,
+                alignItems: 'center',
+                flex: { xs: '0 0 auto', sm: 1 },
+                justifyContent: { xs: 'center', sm: 'flex-end' },
+                width: { xs: '100%', sm: 'auto' }
+              }}>
                 <StyledNavButton color="inherit" component={RouterLink} to="/">
                   提示词库
                 </StyledNavButton>

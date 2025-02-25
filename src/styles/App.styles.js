@@ -35,7 +35,7 @@ export const StyledTitle = styled(Typography)(({ theme }) => ({
 
 export const StyledNavButton = styled(Button)(({ theme }) => ({
   margin: theme.spacing(0, 1.5),
-  padding: theme.spacing(1, 2),
+  padding: theme.spacing(0.5, 1.5),
   borderRadius: '8px',
   fontSize: '0.9rem',
   fontWeight: 600,
@@ -76,17 +76,38 @@ export const StyledNavButton = styled(Button)(({ theme }) => ({
   '@media (max-width: 600px)': {
     margin: theme.spacing(0, 0.5),
     padding: theme.spacing(0.75, 1.25),
-    fontSize: '0.85rem'
+    fontSize: '0.85rem',
+    minWidth: '64px',
+    letterSpacing: '0.25px',
+    borderRadius: '8px',
+    '&:hover': {
+      background: theme.palette.mode === 'dark' 
+        ? 'rgba(255, 255, 255, 0.15)'
+        : 'rgba(0, 0, 0, 0.08)',
+      transform: 'translateY(-1px)',
+      boxShadow: theme.palette.mode === 'dark'
+        ? '0 2px 8px rgba(255, 255, 255, 0.1)'
+        : '0 2px 8px rgba(0, 0, 0, 0.1)'
+    },
+    '&:active': {
+      transform: 'translateY(1px)',
+      boxShadow: 'none'
+    }
   }
 }));
 
-export const MainContainer = styled(Container)({
+export const MainContainer = styled(Container)({  
   marginTop: '80px',
-  marginBottom: 4,
-  flex: 1,
   '@media (max-width: 600px)': {
-    marginTop: '64px'
-  }
+    marginTop: '100px',
+    padding: '0 16px'
+  },
+  padding: '24px',
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  marginBottom: 4,
+  flex: 1
 });
 
 export const Footer = styled(Box)(({ theme }) => ({
