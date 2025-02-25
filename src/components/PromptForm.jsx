@@ -17,7 +17,12 @@ const PromptForm = ({ fields, formData, onInputChange, onPresetClick, focusedFie
               '& + .MuiFormControl-root': {
                 mt: field.presets || (field.presetsByCategory && field.presetsByCategory[selectedCategory]) ? 0.5 : 0
               },
-              transition: 'all 0.3s ease-in-out'
+              transition: 'all 0.3s ease-in-out',
+              borderRadius: 2,
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+              }
             }}
           >
             <TextField
@@ -40,17 +45,34 @@ const PromptForm = ({ fields, formData, onInputChange, onPresetClick, focusedFie
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  transition: 'all 0.3s ease-in-out',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   fontSize: { xs: '0.875rem', sm: '1rem' },
-                  padding: { xs: 1, sm: 1.5 },
-                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                  padding: { xs: 1.5, sm: 2 },
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+                  backdropFilter: 'blur(8px)',
                   cursor: 'text',
+                  borderRadius: '12px',
                   '&:hover': {
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)',
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
                     '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)',
+                      borderColor: theme.palette.primary.main,
                       borderWidth: '2px'
                     }
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+                    boxShadow: `0 0 0 2px ${theme.palette.primary.main}25`,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: theme.palette.primary.main,
+                      borderWidth: '2px'
+                    }
+                  }
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&.Mui-focused': {
+                    color: theme.palette.primary.main
                   }
                 }
               }}

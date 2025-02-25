@@ -1,0 +1,121 @@
+{
+  "templates": {
+    "basic": {
+      "name": "基础框架模式",
+      "description": "根据不同行业特点定制的专业提示词框架",
+      "templates": {
+        "tech": {
+          "name": "技术开发框架",
+          "template": "作为一名{role}，我需要针对{task}提供技术解决方案。请按照以下指南构建\n\n## 技术背景\n{background}\n\n## 功能需求\n{requirements}\n\n## 技术约束\n{constraints}\n\n## 实现方案\n{solution}\n\n## 评估指标\n{metrics}",
+          "industries": ["技术开发", "软件工程", "系统架构", "数据科学"],
+          "roles": ["技术专家", "架构师", "开发工程师", "数据科学家"]
+        },
+        "business": {
+          "name": "商业咨询框架",
+          "template": "作为一名{role}，我需要针对{task}提供商业建议。请按照以下指南构建\n\n## 市场分析\n{market_analysis}\n\n## 业务目标\n{business_goals}\n\n## 策略建议\n{strategies}\n\n## 实施计划\n{implementation}\n\n## 预期效果\n{expected_results}",
+          "industries": ["商业咨询", "企业管理", "市场营销", "战略规划"],
+          "roles": ["业务顾问", "管理顾问", "市场专家", "战略分析师"]
+        },
+        "creative": {
+          "name": "创意设计框架",
+          "template": "作为一名{role}，我需要针对{task}提供创意方案。请按照以下指南构建\n\n## 设计理念\n{design_concept}\n\n## 目标受众\n{target_audience}\n\n## 创意元素\n{creative_elements}\n\n## 表现手法\n{expression}\n\n## 效果预期\n{expected_impact}",
+          "industries": ["设计创意", "广告营销", "品牌设计", "用户体验"],
+          "roles": ["设计师", "创意总监", "品牌设计师", "UI/UX设计师"]
+        },
+        "healthcare": {
+          "name": "医疗健康框架",
+          "template": "作为一名{role}，我需要针对{task}提供医疗建议。请按照以下指南构建\n\n## 病情描述\n{condition}\n\n## 诊断依据\n{diagnosis}\n\n## 治疗方案\n{treatment}\n\n## 注意事项\n{precautions}\n\n## 预后评估\n{prognosis}",
+          "industries": ["医疗健康", "临床医学", "健康管理", "医疗咨询"],
+          "roles": ["医疗专家", "临床医生", "健康顾问", "医疗咨询师"]
+        },
+        "education": {
+          "name": "教育培训框架",
+          "template": "作为一名{role}，我需要针对{task}提供教育方案。请按照以下指南构建\n\n## 学习目标\n{learning_objectives}\n\n## 教学内容\n{content}\n\n## 教学方法\n{methods}\n\n## 评估方式\n{assessment}\n\n## 预期成果\n{outcomes}",
+          "industries": ["教育培训", "职业教育", "学术教育", "在线教育"],
+          "roles": ["教育工作者", "培训讲师", "课程设计师", "教育顾问"]
+        }
+      },
+      "tips": "请根据具体行业选择对应的专业框架模板，确保输出内容的专业性和针对性。"
+    },
+    "costar": {
+      "name": "CO-STAR框架模式",
+      "description": "专业的任务导向型提示词框架",
+      "template": "## 上下文(Context)\n{context}\n\n## 目标(Objective)\n{objective}\n\n## 情境(Situation)\n{situation}\n\n## 任务(Task)\n{task}\n\n## 行动(Action)\n{action}\n\n## 结果(Result)\n{result}",
+      "industries": ["项目管理", "团队协作", "客户服务", "产品开发", "运营管理"],
+      "roles": ["项目经理", "团队负责人", "客服主管", "产品经理", "运营总监"],
+      "tips": "按照CO-STAR框架逐步展开，确保每个环节的完整性"
+    },
+    "expert": {
+      "name": "专家模式",
+      "description": "针对专业问题的深度解析框架",
+      "template": "作为{expertise}，我将针对以下问题提供专业分析和建议：\n\n## 问题描述\n{problem}\n\n## 约束条件\n{constraints}\n\n## 评判标准\n{criteria}\n\n## 输出格式\n{output_format}",
+      "industries": ["技术咨询", "管理咨询", "设计咨询", "医疗咨询", "教育咨询", "金融咨询", "法律咨询", "地产咨询"],
+      "roles": ["技术专家", "管理顾问", "设计专家", "医疗专家", "教育专家", "金融专家", "法律专家", "地产专家"],
+      "tips": "突出专业性，提供深入的分析和建议"
+    },
+    "chain": {
+      "name": "思维链框架模式",
+      "description": "引导AI进行逐步推理的框架",
+      "template": "## 初始状态\n{initial_state}\n\n## 目标状态\n{goal_state}\n\n## 推理步骤\n{steps}\n\n## 验证方法\n{validation}\n\n## 备选方案\n{alternatives}",
+      "industries": ["问题分析", "决策制定", "方案设计", "战略规划"],
+      "roles": ["分析师", "决策者", "规划师", "战略专家"],
+      "tips": "注重逻辑推理的完整性和严谨性"
+    },
+    "creative": {
+      "name": "创意模式",
+      "description": "激发创意灵感和创新思维的框架",
+      "template": "## 创意方向\n{creative_direction}\n\n## 目标情感\n{target_emotion}\n\n## 创新点\n{innovation_points}\n\n## 表现手法\n{expression_method}\n\n## 创意元素\n{creative_elements}",
+      "industries": ["广告创意", "产品设计", "内容创作", "品牌营销", "艺术设计"],
+      "roles": ["创意总监", "设计师", "文案策划", "艺术家", "品牌经理"],
+      "tips": "注重创意的独特性和表现力"
+    },
+    "academic": {
+      "name": "学术模式",
+      "description": "规范的学术研究和论文写作框架",
+      "template": "## 研究主题\n{research_topic}\n\n## 研究方法\n{research_method}\n\n## 理论框架\n{theoretical_framework}\n\n## 数据分析\n{data_analysis}\n\n## 学术规范\n{academic_standards}",
+      "industries": ["学术研究", "科学研究", "社会研究", "教育研究"],
+      "roles": ["研究员", "学者", "教授", "博士生"],
+      "tips": "遵循学术规范，保持研究的严谨性"
+    },
+    "daily": {
+      "name": "日常生活模式",
+      "description": "适用于日常生活中的各种场景和需求",
+      "template": "我是一名{role}，我想针对{task}寻求建议。\n\n## 具体情况\n{situation}\n\n## 主要需求\n{requirements}\n\n## 期望效果\n{expectations}\n\n## 限制条件\n{constraints}\n\n## 补充说明\n{additional}",
+      "industries": ["个人生活", "家庭生活", "社交活动", "休闲娱乐", "日常工作"],
+      "roles": ["普通职员", "家庭主妇", "学生", "自由职业者", "退休人员"],
+      "tips": "描述要具体清晰，突出实际需求和关注点"
+    },
+    "medical": {
+      "name": "医疗咨询模式",
+      "description": "适用于医疗健康领域的就医咨询和健康管理",
+      "template": "我是一名{role}，我需要针对{task}寻求医疗建议。\n\n## 个人情况\n{background}\n\n## 主要症状\n{symptoms}\n\n## 就医经历\n{history}\n\n## 当前状况\n{current}\n\n## 具体问题\n{questions}\n\n## 其他说明\n{additional}",
+      "industries": ["医疗健康", "保健养生", "心理健康", "康复治疗", "慢性病管理"],
+      "roles": ["患者", "患者家属", "康复者", "亚健康人群", "健康关注者"],
+      "tips": "详细描述症状和病史，提供完整的就医信息"
+    },
+    "consumer": {
+      "name": "消费决策模式",
+      "description": "适用于日常消费、购物决策等场景",
+      "template": "我是一名{role}，我在{task}方面需要建议。\n\n## 需求描述\n{requirements}\n\n## 预算范围\n{budget}\n\n## 使用场景\n{scenario}\n\n## 关注重点\n{focus}\n\n## 参考选项\n{options}\n\n## 决策顾虑\n{concerns}",
+      "industries": ["日常消费", "网络购物", "品质生活", "数码产品", "家居用品"],
+      "roles": ["消费者", "上班族", "家庭购物者", "数码发烧友", "精打细算族"],
+      "tips": "明确预算和需求，关注产品性价比和实用性"
+    },
+    "career": {
+      "name": "职业发展模式",
+      "description": "适用于职业规划、求职面试等场景",
+      "template": "我是一名{role}，我在{task}方面需要建议。\n\n## 个人背景\n{background}\n\n## 当前状况\n{current}\n\n## 发展目标\n{goals}\n\n## 技能储备\n{skills}\n\n## 具体问题\n{questions}\n\n## 期望方向\n{expectations}",
+      "industries": ["职业发展", "求职应聘", "技能提升", "创业规划", "职场转型"],
+      "roles": ["在职人员", "求职者", "应届生", "转行人士", "创业者"],
+      "tips": "清晰描述个人情况和职业目标，突出核心诉求"
+    },
+    "professional_consulting": {
+      "name": "专业咨询模式",
+      "description": "适用于专业领域的咨询和建议",
+      "template": "我是一名{role}，我需要关于{task}的专业建议。\n\n## 问题描述\n{problem}\n\n## 相关背景\n{background}\n\n## 具体需求\n{requirements}\n\n## 已尝试方案\n{attempts}\n\n## 期望结果\n{expectations}\n\n## 补充信息\n{additional}",
+      "industries": ["法律咨询", "财务规划", "教育培训", "心理咨询", "技术支持"],
+      "roles": ["咨询者", "当事人", "服务对象", "问题解决者", "寻求帮助者"],
+      "tips": "提供完整的背景信息，明确咨询重点和期望"
+    }
+  }
+}

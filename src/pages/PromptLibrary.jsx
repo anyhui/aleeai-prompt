@@ -48,7 +48,7 @@ function PromptLibrary() {
     }
 
     loadPrompts()
-  }, [])
+  }, [itemsPerPage]) // 添加itemsPerPage作为依赖项
 
   const filteredPrompts = useMemo(() => {
     return prompts.filter(prompt =>
@@ -70,6 +70,18 @@ function PromptLibrary() {
       setLoadingMore(false);
     }, 500);
   }, [loadingMore, hasMore]);
+
+  // 添加滚动监听以实现无限滚动
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100) {
+        loadMore();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadMore]);
 
   const handleCopy = useCallback((text) => {
     navigator.clipboard.writeText(text).then(() => {

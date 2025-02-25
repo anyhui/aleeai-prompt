@@ -14,7 +14,7 @@ function PromptGenerator() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState('basic');
-  const [selectedCategory, setSelectedCategory] = useState('content');
+  const [selectedCategory, setSelectedCategory] = useState('general');
   const [formData, setFormData] = useState({});
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -27,16 +27,23 @@ function PromptGenerator() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('/presets.json');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const [presetsResponse, templatesResponse] = await Promise.all([
+          fetch('/presets.json'),
+          fetch('/output_templates.json')
+        ]);
+        if (!presetsResponse.ok || !templatesResponse.ok) {
+          throw new Error(`HTTP error! status: ${presetsResponse.status || templatesResponse.status}`);
         }
-        const data = await response.json();
-        setTemplates(data.templates);
-        setCategories(data.categories);
+        const [presetsData, templatesData] = await Promise.all([
+          presetsResponse.json(),
+          templatesResponse.json()
+        ]);
+        setTemplates(presetsData.templates);
+        setCategories(presetsData.categories);
+        window.outputTemplates = templatesData; // 存储模板数据
       } catch (error) {
-        console.error('Error loading presets:', error);
-        setError('加载预设数据失败，请刷新页面重试');
+        console.error('Error loading data:', error);
+        setError('加载数据失败，请刷新页面重试');
       } finally {
         setLoading(false);
       }
@@ -116,92 +123,122 @@ function PromptGenerator() {
       setSnackbarOpen(true);
     });
   };
-
   const generatePrompt = () => {
-    let prompt = '';
-    const categoryInfo = categories.find(c => c.id === selectedCategory);
+    const categoryInfo = categories.find(c => c.id === selectedCategory) || { name: '未知领域' };
     setHasGenerated(true);
 
-    // 从formData中提取并格式化字段值
-    const fieldValues = currentFields
-      .map(field => {
-        const value = formData[field.id];
-        if (!value) return null;
-        return `${field.label}：${Array.isArray(value) ? value.join('、') : value}`;
-      })
-      .filter(Boolean)
-      .join('\n');
+    // 获取选定模板的输出格式
+    const templateData = window.outputTemplates?.templates?.[selectedTemplate];
+    if (!templateData) {
+      setError('模板数据加载失败');
+      return;
+    }
 
-    const promptStructure = [
-      '1. 角色与背景',
-      '   - 执行角色定位',
-      '   - 专业领域要求',
-      '   - 知识储备要求',
-      '',
-      '2. 任务详情',
-      '   - 项目背景说明',
-      '   - 具体目标定义',
-      '   - 关键需求描述',
-      '   - 限制条件说明',
-      '',
-      '3. 目标受众分析',
-      '   - 用户画像描述',
-      '   - 需求痛点分析',
-      '   - 期望价值阐述',
-      '   - 使用场景界定',
-      '',
-      '4. 执行指南',
-      '   - 方法论说明',
-      '   - 步骤分解',
-      '   - 资源配置',
-      '   - 时间节点',
-      '',
-      '5. 输出规范',
-      '   - 内容框架',
-      '   - 格式要求',
-      '   - 语言风格',
-      '   - 专业术语规范',
-      '',
-      '6. 质量标准',
-      '   - 完整性要求',
-      '   - 准确性标准',
-      '   - 专业度评估',
-      '   - 实用性衡量',
-      '',
-      '7. 风险管理',
-      '   - 潜在问题识别',
-      '   - 预防措施制定',
-      '   - 应急方案设计',
-      '   - 持续优化机制'
-    ];
+    // 如果是基础框架模式，需要根据行业选择具体模板
+    let template = templateData.template;
+    if (selectedTemplate === 'basic' && templateData.templates) {
+      // 根据行业选择对应的子模板
+      const industry = categoryInfo.name;
+      
+      // 计算每个模板与当前行业的匹配度
+      const templateMatches = Object.entries(templateData.templates).map(([key, tmpl]) => {
+        const matchScore = tmpl.industries.reduce((score, i) => {
+          if (i.toLowerCase() === industry.toLowerCase()) return score + 3;
+          if (industry.toLowerCase().includes(i.toLowerCase())) return score + 2;
+          if (i.toLowerCase().includes(industry.toLowerCase())) return score + 1;
+          return score;
+        }, 0);
+        return { key, score: matchScore, template: tmpl };
+      });
+      
+      // 选择匹配度最高的模板
+      const bestMatch = templateMatches.reduce((best, current) => 
+        current.score > best.score ? current : best
+      , { score: -1 });
+      
+      if (bestMatch.score > 0) {
+        template = bestMatch.template.template;
+      } else {
+        // 如果没有找到匹配的模板，根据行业特征选择最适合的模板
+        const industryKeywords = {
+          tech: ['技术', '开发', '工程', '系统', '数据'],
+          business: ['商业', '管理', '营销', '战略'],
+          creative: ['设计', '创意', '广告', '品牌'],
+          healthcare: ['医疗', '健康', '临床', '诊断'],
+          education: ['教育', '培训', '学习', '教学']
+        };
+        
+        const defaultTemplate = Object.entries(industryKeywords).reduce((selected, [type, keywords]) => {
+          const matchCount = keywords.filter(keyword => 
+            industry.toLowerCase().includes(keyword.toLowerCase())
+          ).length;
+          return matchCount > selected.count ? { type, count: matchCount } : selected;
+        }, { type: 'tech', count: 0 });
+        
+        template = templateData.templates[defaultTemplate.type].template;
+      }
+    }
+    // 创建字段值映射
+    const fieldMap = {};
+    const requiredFields = new Set();
+    const missingFields = [];
 
-    prompt = `领域：${categoryInfo.name}
+    // 收集必填字段
+    currentFields.forEach(field => {
+      if (field.required) {
+        requiredFields.add(field.id);
+      }
+    });
 
-${fieldValues}
+    // 处理字段值
+    currentFields.forEach(field => {
+      const value = formData[field.id];
+      if (value !== undefined && value !== '') {
+        // 处理数组类型的值
+        fieldMap[field.id] = Array.isArray(value) ? 
+          value.map(v => v.trim()).filter(v => v).join('、') : 
+          value.trim();
+      } else if (requiredFields.has(field.id)) {
+        missingFields.push(field.label || field.id);
+      }
+    });
 
-===== 提示词框架 =====
-${promptStructure.join('\n')}
+    // 检查必填字段
+    if (missingFields.length > 0) {
+      setError(`请填写以下必填字段：${missingFields.join('、')}`);
+      return;
+    }
 
-===== 执行要求 =====
-1. 严格遵循角色定位和专业要求
-2. 确保输出内容的完整性和逻辑性
-3. 使用清晰、专业的语言表达
-4. 提供具体、可操作的执行方案
-5. 注重实用性和可行性
-6. 包含必要的示例和说明
-7. 设定明确的评估标准
-8. 预留优化和调整空间
+    // 添加行业信息
+    fieldMap.industry = categoryInfo.name;
 
-===== 质量检查 =====
-1. 内容完整度：确保覆盖所有必要环节
-2. 专业准确度：术语使用准确、逻辑严密
-3. 可执行性：方案具体、步骤清晰
-4. 实用价值：解决实际问题、创造实际价值
-5. 创新思维：提供创新性的解决方案
-6. 风险控制：包含完善的风险防控措施`;
+    let prompt = template;
+
+    // 替换模板中的占位符
+    Object.entries(fieldMap).forEach(([key, value]) => {
+      const placeholder = new RegExp(`\{${key}\}`, 'g');
+      prompt = prompt.replace(placeholder, value || '');
+    });
+
+    // 处理未替换的占位符
+    const remainingPlaceholders = prompt.match(/\{[^}]+\}/g);
+    if (remainingPlaceholders) {
+      remainingPlaceholders.forEach(placeholder => {
+        const key = placeholder.slice(1, -1);
+        prompt = prompt.replace(new RegExp(placeholder, 'g'), `[${key}]`);
+      });
+    }
+
+    // 优化格式
+    prompt = prompt
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line)
+      .join('\n\n');
+
     setGeneratedPrompt(prompt);
+    setError(null); // 清除之前的错误信息
   };
-
   const handleInputFocus = (fieldId) => {
     setFocusedField(fieldId);
   };
@@ -213,7 +250,6 @@ ${promptStructure.join('\n')}
       setFocusedField(null);
     }
   };
-
   return (
     <ErrorBoundary>
       <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -244,7 +280,7 @@ ${promptStructure.join('\n')}
         </Typography>
         <Grid container spacing={1}>
           {Object.entries(templates).map(([key, template]) => (
-            <Grid item xs={12} sm={6} md={3} key={key}>
+            <Grid item xs={12} sm={6} md={4} key={key}>
               <TemplateCard 
                 selected={selectedTemplate === key}
                 onClick={() => handleTemplateChange(key)}
@@ -274,8 +310,8 @@ ${promptStructure.join('\n')}
             setSelectedCategory(newValue);
             setHasGenerated(false);
           }}
-          variant="scrollable"
-          scrollButtons="auto"
+          // variant="scrollable"
+          // scrollButtons="auto"
         >
           {categories.map(category => (
             <Tab
@@ -293,17 +329,20 @@ ${promptStructure.join('\n')}
       </Paper>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <PromptForm
-          fields={currentFields}
-          formData={formData}
-          onInputChange={handleInputChange}
-          onPresetClick={handlePresetClick}
-          selectedCategory={selectedCategory}
-          focusedField={focusedField}
-          onInputFocus={handleInputFocus}
-          onInputBlur={handleInputBlur}
-        />
-
+        <Grid item xs={12}>
+          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, boxShadow: theme => `0 8px 32px ${theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)'}` }}>
+            <PromptForm
+              fields={currentFields}
+              formData={formData}
+              onInputChange={handleInputChange}
+              onPresetClick={handlePresetClick}
+              selectedCategory={selectedCategory}
+              focusedField={focusedField}
+              onInputFocus={handleInputFocus}
+              onInputBlur={handleInputBlur}
+            />
+          </Paper>
+        </Grid>
         <Grid item xs={12}>
           <Card className="output-card" sx={{ mb: 3, borderRadius: 2, boxShadow: theme => `0 8px 32px ${theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)'}` }}>
             <CardContent>
@@ -344,7 +383,7 @@ ${promptStructure.join('\n')}
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={2000}
+        autoHideDuration={500}
         onClose={() => setSnackbarOpen(false)}
         message="提示词已复制到剪贴板"
       />

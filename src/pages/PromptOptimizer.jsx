@@ -677,7 +677,7 @@ function PromptOptimizer() {
 
   const handleCopy = async () => {
     try {
-      const textToCopy = stepResults.analysis + '\n\n' + stepResults.suggestions + '\n\n' + stepResults.decomposition;
+      const textToCopy = stepResults.analysis + '\n\n' + '\n\n' + stepResults.decomposition;
       if (!textToCopy) {
         throw new Error('没有可复制的内容');
       }

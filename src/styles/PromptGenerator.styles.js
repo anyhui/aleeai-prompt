@@ -39,11 +39,12 @@ export const TemplateCard = styled(BaseCard)(({ theme, selected }) => ({
 
 export const CategoryTabs = styled(Tabs)(({ theme }) => ({
   '& .MuiTabs-flexContainer': {
+    display: 'wrap',
     flexWrap: 'wrap',
-    gap: 2
+    gap: 3
   },
   '& .MuiTab-root': {
-    minWidth: '120px',
+    minWidth: '140px',
     flex: '0 0 auto',
     marginBottom: 1,
     borderRadius: borderRadius.sm,
