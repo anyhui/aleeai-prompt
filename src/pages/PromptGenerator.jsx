@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Grid, TextField, Button, Typography, Card, CardContent, Snackbar, Paper, Tab, Tabs, CardActionArea, Rating, FormControl, FormLabel, FormHelperText, CircularProgress, Alert } from '@mui/material';
+import { Box, Grid, TextField, Button, Typography, Card, CardContent, Snackbar, Paper, Tab } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { ContentPaper, TemplateCard, CategoryTabs, PresetButton } from '../styles/PromptGenerator.styles';
-import { TruncatedText, FlexBox } from '../styles/shared.styles';
+import { ContentPaper, CategoryTabs } from '../styles/PromptGenerator.styles';
+import { FlexBox, TemplateCard, TruncatedText, PresetButton } from '../styles/shared.styles';
 import LoadingScreen from '../components/LoadingScreen';
+import TemplateSelector from '../components/TemplateSelector';
+import PromptForm from '../components/PromptForm';
+import { CardActionArea, FormControl } from '@mui/material';
 
 function PromptGenerator() {
   // 将所有useState声明移到组件顶部

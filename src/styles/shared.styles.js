@@ -2,6 +2,18 @@ import { styled } from '@mui/material/styles';
 import { Card, Box, Button, Paper, Typography } from '@mui/material';
 import { transitions, borderRadius, blur, gradients, shadows } from './constants';
 
+// 内容容器样式
+export const ContentPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderRadius: borderRadius.lg,
+  background: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.8)',
+  backdropFilter: blur.md,
+  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'}`,
+  boxShadow: theme.palette.mode === 'dark'
+    ? 'none'
+    : `${shadows.sm} rgba(0, 0, 0, 0.1)`
+}));
+
 // 通用卡片样式
 export const BaseCard = styled(Card)(({ theme }) => ({
   height: '100%',
@@ -23,6 +35,16 @@ export const BaseCard = styled(Card)(({ theme }) => ({
     border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : theme.palette.primary.main}`,
     background: theme.palette.mode === 'dark' ? gradients.dark.hover : gradients.light.hover,
     zIndex: 1
+  }
+}));
+
+// 模板卡片样式
+export const TemplateCard = styled(BaseCard)(({ theme, selected }) => ({
+  cursor: 'pointer',
+  border: selected ? `2px solid ${theme.palette.primary.main}` : undefined,
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    border: `2px solid ${theme.palette.primary.main}`
   }
 }));
 
@@ -107,6 +129,20 @@ export const GradientText = styled(Typography)(({ theme }) => ({
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
   fontWeight: 700
+}));
+
+// 预设按钮样式
+export const PresetButton = styled(BaseButton)(({ theme, selected }) => ({
+  minWidth: 'auto',
+  minHeight: '32px',
+  padding: '4px 12px',
+  fontSize: '0.85rem',
+  backgroundColor: selected ? theme.palette.primary.main : 'transparent',
+  color: selected ? theme.palette.common.white : theme.palette.text.primary,
+  '&:hover': {
+    backgroundColor: selected ? theme.palette.primary.dark : theme.palette.action.hover,
+    transform: 'translateY(-2px)'
+  }
 }));
 
 // 通用Flex容器样式
