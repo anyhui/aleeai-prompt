@@ -68,7 +68,7 @@ const StatsCards = ({ stats }) => {
   return (
     <Grid container spacing={2} sx={{ mt: 2, mb: 2 }}>
       {cards.map((card, index) => (
-        <Grid item xs={12} sm={6} md={3} key={index}>
+        <Grid item xs={3} sm={3} md={3} key={index}>
           <Card
             sx={{
               height: '100%',

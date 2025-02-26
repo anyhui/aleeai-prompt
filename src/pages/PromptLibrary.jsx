@@ -183,7 +183,7 @@ function PromptLibrary() {
 
       <Grid container spacing={3} sx={{ mt: { xs: 3, sm: 4 } }}>
         {displayedPrompts.map((prompt, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index} sx={{
+          <Grid item xs={6} sm={6} md={4} key={index} sx={{
             display: 'flex'
           }}>
             <Card 
