@@ -1,35 +1,26 @@
-import React, { useState } from 'react';
-import { Box, Typography, TextField, Button, Card, CardContent, Grid, FormControl, InputLabel, Select, MenuItem, Snackbar, Alert, CircularProgress } from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { transitions, borderRadius, blur, gradients, shadows } from '../styles/constants';
-import Slider from '@mui/material/Slider';
-import StatsCards from '../components/StatsCards';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Grid, Snackbar, Alert } from '@mui/material';
+import { borderRadius, blur, gradients, shadows } from '../styles/constants';
+import ModelConfig, { defaultConfig, validateConfig, checkConnection as checkApiConnection, commonEndpoints, modelOptions } from '../components/ModelConfig';
+import PromptInput from '../components/PromptInput';
+import OptimizedPromptOutput from '../components/OptimizedPromptOutput';
+import VersionControl from '../components/VersionControl';
+import { getVersionHistory, saveVersion, compareVersions } from '../services/versionControlService';
 
-const defaultConfig = {
-  apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
-  model: import.meta.env.VITE_DEFAULT_MODEL || 'gpt-4',
-  apiKey: import.meta.env.VITE_API_KEY || ''
-};
 
-const validateConfig = (config) => {
-  if (!config.apiEndpoint) {
-    throw new Error('API端点未配置');
-  }
-  if (!config.model) {
-    throw new Error('模型未选择');
-  }
-  if (!config.apiKey) {
-    throw new Error('API密钥未配置');
-  }
-};
 
 function PromptOptimizer() {
-  const [optimizationStep, setOptimizationStep] = useState('idle');  // 初始化 optimizationStep
+  const [optimizationStep, setOptimizationStep] = useState('idle');
   const [stepResults, setStepResults] = useState({
     analysis: '',
     suggestions: '',
     decomposition: ''
   });
+  
+  // 版本控制相关状态
+  const [promptId, setPromptId] = useState('default-prompt');
+  const [versions, setVersions] = useState([]);
+  const [currentVersion, setCurrentVersion] = useState(null);
 
   const [config, setConfig] = useState({
     ...defaultConfig,
@@ -52,78 +43,7 @@ function PromptOptimizer() {
   const [customEndpoint, setCustomEndpoint] = useState('');
   const [isCustomEndpoint, setIsCustomEndpoint] = useState(false);
 
-  const commonEndpoints = [
-    { label: 'OpenAI', value: 'https://api.openai.com/v1/chat/completions' },
-    { label: 'Anthropic', value: 'https://api.anthropic.com/v1/messages' },
-    { label: 'Azure OpenAI', value: 'https://your-resource.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-05-15' },
-    { label: 'Deepseek', value: 'https://api.deepseek.com/v1/chat/completions' },
-    { label: 'SiliconFlow', value: 'https://api.siliconflow.cn/v1/chat/completions' },
-    { label: '自定义', value: 'custom' }
-  ];
 
-  const modelOptions = [
-    { label: 'GPT-4', value: 'gpt-4' },
-    { label: 'GPT-4 Turbo', value: 'gpt-4-1106-preview' },
-    { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
-    { label: 'Claude 2.1', value: 'claude-2.1' },
-    { label: 'Claude Instant', value: 'claude-instant-1.2' },
-    { label: 'Deepseek-Chat', value: 'deepseek-chat' },
-    { label: 'Deepseek-Coder', value: 'deepseek-reasoner' },
-    { label: 'SiliconFlow-deepseek-V2.5', value: 'deepseek-ai/DeepSeek-V2.5' },
-    { label: 'SiliconFlow-deepseek-V3', value: 'deepseek-ai/DeepSeek-V3' },
-    { label: 'SiliconFlow-deepseek-R1', value: 'deepseek-ai/DeepSeek-R1' }
-  ];
-
-  const ConnectionStatus = () => {
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-        <Button
-          variant="contained"
-          onClick={checkConnection}
-          disabled={connectionStatus.isChecking}
-          sx={{ mr: 2 }}
-        >
-          {connectionStatus.isChecking ? (
-            <>
-              <CircularProgress size={20} sx={{ mr: 1 }} />
-              检查中...
-            </>
-          ) : (
-            '检查连接'
-          )}
-        </Button>
-        {connectionStatus.isConnected && (
-          <Alert severity="success" sx={{ flex: 1 }}>
-            API连接正常
-          </Alert>
-        )}
-        {connectionStatus.error && (
-          <Alert severity="error" sx={{ flex: 1 }}>
-            {connectionStatus.error}
-          </Alert>
-        )}
-      </Box>
-    );
-  };
-
-  const handleEndpointChange = (event) => {
-    const value = event.target.value;
-    if (value === 'custom') {
-      setIsCustomEndpoint(true);
-      setConfig(prev => ({ ...prev, apiEndpoint: customEndpoint }));
-    } else {
-      setIsCustomEndpoint(false);
-      setConfig(prev => ({ ...prev, apiEndpoint: value }));
-    }
-  };
-
-  const handleCustomEndpointChange = (event) => {
-    const value = event.target.value;
-    setCustomEndpoint(value);
-    if (isCustomEndpoint) {
-      setConfig(prev => ({ ...prev, apiEndpoint: value }));
-    }
-  };
 
   const [prompt, setPrompt] = useState('');
   const [optimizedPrompt, setOptimizedPrompt] = useState('');
@@ -133,50 +53,19 @@ function PromptOptimizer() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const checkConnection = async () => {
-    setConnectionStatus(prev => ({ ...prev, isChecking: true, error: null }));
-    try {
-      const response = await fetch(config.apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          model: config.model,
-          messages: [{ role: 'user', content: 'test' }]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API连接失败: ${response.status} ${response.statusText}`);
-      }
-
-      setConnectionStatus(prev => ({ ...prev, isConnected: true, error: null }));
-      setSnackbarMessage('API连接成功！');
-      setSnackbarSeverity('success');
-      setSnackbarOpen(true);
-    } catch (error) {
-      setConnectionStatus(prev => ({
-        ...prev,
-        isConnected: false,
-        error: error.message
-      }));
-      setSnackbarMessage(`API连接失败: ${error.message}`);
-      setSnackbarSeverity('error');
-      setSnackbarOpen(true);
-    } finally {
-      setConnectionStatus(prev => ({ ...prev, isChecking: false }));
+  // 工具字典 - 用于未来功能扩展
+  const [toolsDict, setToolsDict] = useState({});
+  
+  // 加载版本历史
+  useEffect(() => {
+    if (promptId) {
+      const history = getVersionHistory(promptId);
+      setVersions(history);
     }
-  };
+  }, [promptId]);
 
-  const handleConfigChange = (field) => (event) => {
-    setConfig(prev => ({
-      ...prev,
-      [field]: event.target.value
-    }));
-    setConnectionStatus(prev => ({ ...prev, isConnected: false }));
+  const checkConnection = () => {
+    checkApiConnection(config, setConnectionStatus, setSnackbarMessage, setSnackbarSeverity, setSnackbarOpen);
   };
 
   const analyzeAndExpandInput = async (inputPrompt) => {
@@ -300,49 +189,6 @@ function PromptOptimizer() {
         - **描述**：专注于用户体验，确保简单性和直观导航。
         - **推理**：直观的设计确保用户在登录过程中有流畅的体验，减少摩擦。
         - **成功标准**：布局应该简约，标签清晰，使登录过程简单快捷。
-        *子任务3*：
-        - **描述**：实现安全功能，如密码掩码和错误登录处理。
-        - **推理**：安全措施确保用户数据得到保护，并在出现错误时帮助指导用户。
-        - **成功标准**：密码应默认掩码显示，错误信息应该具有信息性但安全（例如，"用户名或密码不正确"）。
-
-        示例5：
-        提示词："列出从头开始烤巧克力蛋糕的步骤。"
-
-        ##思考过程##
-        *子任务1*：
-        - **描述**：列出制作蛋糕所需的所有配料。
-        - **推理**：从配料开始确保在开始制作过程前准备好所有必要的材料。
-        - **成功标准**：提供完整的配料清单，包括计量（例如，2杯面粉，1杯糖等）。
-        *子任务2*：
-        - **描述**：描述准备步骤，如混合干湿原料。
-        - **推理**：详细说明准备步骤确保用户按正确顺序混合配料。
-        - **成功标准**：实例化配料混合。
-        *子任务3*：
-        - **描述**：说明烘焙过程和完成步骤。
-        - **推理**：准确的烘焙说明对于成功制作蛋糕至关重要。
-        - **成功标准**：包括温度设置、烘焙时间和冷却说明。
-        *子任务 3*:
-        - **描述**：讨论如何交叉验证结果的平均以提供最终评估指标。
-        - **推理**：平均结果有助于减轻误差的发生，是由于不同训练/验证分割引起的。
-        - **成功标准**：输出应该清晰地解释如何从多迭代交叉验证中产生最终模型的评估。
-
-        示例 6:
-        提示词: "为一个环保产品创建营销计划。"
-        
-        ##思考过程##
-        *子任务1*:
-        - **描述**：确定环保产品的目标受众。
-        - **推理**：定义目标受众对于有效定制营销信息和策略至关重要。
-        - **成功标准**：提供详细的描述，包括人口统计和心理特征（例如，年龄、价值观、环保意识）。
-        *子任务2*：
-        - **描述**：概述关键信息和品牌定位。
-        - **推理**：清晰的信息传达确保产品的优势和独特卖点能有效地传达给目标受众。
-        - **成功标准**：制定一个突出环保性、可持续性和产品优势的有说服力的信息。
-        *子任务3*:
-        - **描述**：确定要使用的营销渠道（例如，社交媒体、电子邮件营销、意见领袖合作）。
-        - **推理**：选择合适的渠道确保营销计划能以有影响力的方式触达正确的受众。
-        - **成功标准**：根据目标受众的偏好和行为选择包含数字和传统媒体的渠道组合。
-        
 
         现在，分析以下提示，然后仅返回生成的输出：
 提示词：${inputPrompt}`
@@ -571,28 +417,32 @@ function PromptOptimizer() {
     return result;
   };
 
-  // 添加工具字典
-  const [toolsDict, setToolsDict] = useState({});
-
-  // 添加更新工具字典的函数
+  // 更新工具字典的函数 - 用于未来功能扩展
   const updateToolsDict = (newTools) => {
     setToolsDict(prev => ({
       ...prev,
       ...newTools
     }));
   };
-
-  // 添加函数调用方法
-  const callFunction = async (functionName, ...args) => {
-    if (typeof window[functionName] === 'function') {
-      return await window[functionName](...args);
-    }
-    throw new Error(`Function ${functionName} not found`);
+  
+  // 处理版本选择
+  const handleVersionSelect = (version) => {
+    setCurrentVersion(version);
+    setPrompt(version.content);
   };
-
-  const assemblePrompt = (components) => {
-    const { analysis, suggestions, decomposition } = components;
-    return `${analysis}\n\n${suggestions}\n\n${decomposition}`;
+  
+  // 保存当前版本
+  const handleSaveVersion = (description = '') => {
+    if (!prompt) return;
+    
+    const newVersion = saveVersion(promptId, prompt, description);
+    if (newVersion) {
+      setVersions(prev => [...prev, newVersion]);
+      setCurrentVersion(newVersion);
+      setSnackbarMessage('版本保存成功');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    }
   };
 
   const handleOptimize = async () => {
@@ -638,6 +488,9 @@ function PromptOptimizer() {
 
       setOptimizedPrompt(optimizedResult);
       setOptimizationStep('completed');
+      
+      // 自动保存优化后的版本
+      handleSaveVersion('优化后的提示词');
 
       // 更新最终的时间统计
       setStats(prev => ({
@@ -654,7 +507,7 @@ function PromptOptimizer() {
   };
 
   // 更新计时器
-  React.useEffect(() => {
+  useEffect(() => {
     let timer;
     if (startTime && optimizationStep !== 'completed' && optimizationStep !== 'error') {
       timer = setInterval(() => {
@@ -734,218 +587,65 @@ function PromptOptimizer() {
           color: 'text.secondary',
           maxWidth: '800px'
         }}>
-          使用AI技术优化提示词，提升其清晰度、具体性和有效性
+          使用AI技术优化您的提示词，提高效率和质量
         </Typography>
+          
       </Box>
-
+      
       <Grid container spacing={3}>
         <Grid item xs={12}>
-          <Card sx={{
-            borderRadius: borderRadius.lg,
-            backdropFilter: blur.lg,
-            background: theme => theme.palette.mode === 'dark' ? gradients.dark.primary : gradients.light.primary,
-            boxShadow: theme => theme.palette.mode === 'dark'
-              ? `${shadows.lg} rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)`
-              : `${shadows.lg} rgba(99, 102, 241, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.8)`
-          }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                配置信息
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>API端点</InputLabel>
-                    <Select
-                      value={isCustomEndpoint ? 'custom' : config.apiEndpoint}
-                      label="API端点"
-                      onChange={handleEndpointChange}
-                    >
-                      {commonEndpoints.map((endpoint) => (
-                        <MenuItem key={endpoint.value} value={endpoint.value}>
-                          {endpoint.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    {isCustomEndpoint && (
-                      <TextField
-                        fullWidth
-                        label="自定义API端点"
-                        value={customEndpoint}
-                        onChange={handleCustomEndpointChange}
-                        sx={{ mt: 2 }}
-                      />
-                    )}
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>模型</InputLabel>
-                    <Select
-                      value={config.model}
-                      label="模型"
-                      onChange={handleConfigChange('model')}
-                    >
-                      {modelOptions.map((model) => (
-                        <MenuItem key={model.value} value={model.value}>
-                          {model.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="API密钥"
-                    type="password"
-                    value={config.apiKey}
-                    onChange={handleConfigChange('apiKey')}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography gutterBottom>Temperature (创造性程度)</Typography>
-                  <Slider
-                    value={config.temperature}
-                    onChange={(e, newValue) => setConfig(prev => ({ ...prev, temperature: newValue }))}
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    valueLabelDisplay="auto"
-                    sx={{ width: '100%' }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <ConnectionStatus />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+          <ModelConfig 
+            config={config}
+            setConfig={setConfig}
+            connectionStatus={connectionStatus}
+            setConnectionStatus={setConnectionStatus}
+            customEndpoint={customEndpoint}
+            setCustomEndpoint={setCustomEndpoint}
+            isCustomEndpoint={isCustomEndpoint}
+            setIsCustomEndpoint={setIsCustomEndpoint}
+            setSnackbarMessage={setSnackbarMessage}
+            setSnackbarSeverity={setSnackbarSeverity}
+            setSnackbarOpen={setSnackbarOpen}
+          />
         </Grid>
-
+        
         <Grid item xs={12}>
-          <Card sx={{
-            borderRadius: borderRadius.lg,
-            backdropFilter: blur.lg,
-            background: theme => theme.palette.mode === 'dark' ? gradients.dark.primary : gradients.light.primary,
-            boxShadow: theme => theme.palette.mode === 'dark'
-              ? `${shadows.lg} rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)`
-              : `${shadows.lg} rgba(99, 102, 241, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.8)`
-          }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                原始提示词
-              </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="在此输入需要优化的提示词"
-                sx={{ mb: 2 }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleOptimize}
-                disabled={loading}
-                sx={{ float: 'right' }}
-              >
-                {loading ? <CircularProgress size={24} /> : '优化提示词'}
-              </Button>
-            </CardContent>
-          </Card>
+          <PromptInput 
+            prompt={prompt}
+            setPrompt={setPrompt}
+            loading={loading}
+            handleOptimize={handleOptimize}
+          />
         </Grid>
-
+        
         <Grid item xs={12}>
-          <Card sx={{
-            borderRadius: borderRadius.lg,
-            backdropFilter: blur.lg,
-            background: theme => theme.palette.mode === 'dark' ? gradients.dark.primary : gradients.light.primary,
-            boxShadow: theme => theme.palette.mode === 'dark'
-              ? `${shadows.lg} rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)`
-              : `${shadows.lg} rgba(99, 102, 241, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.8)`
-          }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                优化后的提示词
-              </Typography>
-              <Box sx={{ width: '100%', mb: 2 }}>
-              <StatsCards stats={stats} />
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Box sx={{
-                    width: '100%',
-                    height: '4px',
-                    backgroundColor: 'background.paper',
-                    borderRadius: '2px',
-                    position: 'relative'
-                  }}>
-                    <Box sx={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      height: '100%',
-                      backgroundColor: 'primary.main',
-                      borderRadius: '2px',
-                      transition: 'width 0.3s ease-in-out',
-                      width: optimizationStep === 'idle' ? '0%' :
-                             optimizationStep === 'analyzing' ? '33%' :
-                             optimizationStep === 'suggesting' ? '66%' :
-                             optimizationStep === 'decomposing' ? '90%' :
-                             optimizationStep === 'done' ? '100%' : '0%'
-                    }} />
-                  </Box>
-                  <Typography variant="body2" sx={{ ml: 2, minWidth: '100px' }}>
-                    {optimizationStep === 'idle' ? '等待开始' :
-                     optimizationStep === 'analyzing' ? '分析中...' :
-                     optimizationStep === 'suggesting' ? '优化中...' :
-                     optimizationStep === 'decomposing' ? '分解中...' :
-                     optimizationStep === 'done' ? '已完成' : ''}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ mb: 2, maxHeight: 'none', overflowY: 'visible' }}>
-                {stepResults.analysis && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="primary" gutterBottom>分析结果：</Typography>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{stepResults.analysis}</Typography>
-                  </Box>
-                )}
-                {stepResults.suggestions && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="primary" gutterBottom>优化建议：</Typography>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{stepResults.suggestions}</Typography>
-                  </Box>
-                )}
-                {stepResults.decomposition && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="primary" gutterBottom>任务分解：</Typography>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{stepResults.decomposition}</Typography>
-                  </Box>
-                )}
-              </Box>
-              <Button
-                variant="contained"
-                onClick={() => handleCopy()}
-                disabled={!optimizedPrompt}
-                startIcon={<ContentCopyIcon />}
-                sx={{ float: 'right' }}
-              >
-                复制优化结果
-              </Button>
-            </CardContent>
-          </Card>
+          <OptimizedPromptOutput 
+            optimizationStep={optimizationStep}
+            stepResults={stepResults}
+            stats={stats}
+            handleCopy={handleCopy}
+            error={error}
+          />
+        </Grid>
+        
+        <Grid item xs={12}>
+          <VersionControl 
+            versions={versions}
+            currentVersion={currentVersion}
+            onVersionSelect={handleVersionSelect}
+            onCompareVersions={compareVersions}
+          />
         </Grid>
       </Grid>
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
+      
+      <Snackbar 
+        open={snackbarOpen} 
+        autoHideDuration={6000} 
         onClose={() => setSnackbarOpen(false)}
       >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity} 
           sx={{ width: '100%' }}
         >
           {snackbarMessage}

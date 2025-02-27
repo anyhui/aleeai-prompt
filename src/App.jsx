@@ -1,20 +1,19 @@
-import React, { createContext, useContext, useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { Toolbar, IconButton, CssBaseline, Container, Typography, Box } from '@mui/material'
+import { Toolbar, CssBaseline, Container, Typography, Box } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import Brightness4Icon from '@mui/icons-material/Brightness4'
-import Brightness7Icon from '@mui/icons-material/Brightness7'
 import { ThemeProvider } from '@mui/material/styles'
 import { StyledAppBar, StyledTitle, StyledNavButton, MainContainer, Footer, RootBox } from './styles/App.styles'
 import DonateButton from './components/DonateButton'
+import ThemeManager from './components/ThemeManager'
 
 // 页面组件将在后续创建
 import PromptLibrary from './pages/PromptLibrary'
 import PromptGenerator from './pages/PromptGenerator'
 import PromptOptimizer from './pages/PromptOptimizer'
-import { createAppTheme } from './theme'
 
-export const ColorModeContext = createContext({ toggleColorMode: () => {} })
+// 导入主题映射
+import { themeMap as themes } from './theme'
 
 const evaluationCriteria = {
   relevance: { label: '相关性', description: '输出是否符合需求' },
@@ -24,22 +23,18 @@ const evaluationCriteria = {
 };
 
 function App() {
-  const [mode, setMode] = useState('dark');
-  
-  const colorMode = useMemo(
-    () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-      },
-    }),
-    []
-  );
+  // 使用主题名称来管理当前主题
+  const [currentTheme, setCurrentTheme] = useState('default');
 
-  const theme = useMemo(() => createAppTheme(mode), [mode]);
+  // 处理主题变更
+  const handleThemeChange = (themeName) => {
+    if (themes[themeName]) {
+      setCurrentTheme(themeName);
+    }
+  };
 
   return (
-    <ColorModeContext.Provider value={colorMode}>
-      <ThemeProvider theme={theme}>
+    <ThemeProvider theme={themes[currentTheme]}>
         <CssBaseline />
         <RootBox>
           <StyledAppBar position="fixed">
@@ -72,13 +67,7 @@ function App() {
                 <StyledNavButton color="inherit" component={RouterLink} to="/optimizer">
                   优化器
                 </StyledNavButton>
-                <IconButton
-                  onClick={colorMode.toggleColorMode}
-                  color="inherit"
-                  sx={{ ml: 1 }}
-                >
-                  {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-                </IconButton>
+                <ThemeManager onThemeChange={handleThemeChange} />
               </Box>
             </Toolbar>
           </StyledAppBar>
@@ -101,7 +90,7 @@ function App() {
           <DonateButton />
         </RootBox>
       </ThemeProvider>
-    </ColorModeContext.Provider>
+
   )
 }
 
