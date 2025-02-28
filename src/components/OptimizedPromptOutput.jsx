@@ -1,8 +1,9 @@
 import React from 'react';
-import { Box, Typography, TextField, Button, Card, CardContent, CircularProgress } from '@mui/material';
+import { Box, Typography, TextField, Button, Card, CardContent, CircularProgress, Paper } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { borderRadius, blur, gradients, shadows } from '../styles/constants';
 import StatsCards from './StatsCards';
+import ReactMarkdown from 'react-markdown';
 
 const OptimizedPromptOutput = ({
   optimizationStep,
@@ -71,15 +72,11 @@ const OptimizedPromptOutput = ({
             <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
               分析结果
             </Typography>
-            <TextField
-              fullWidth
-              multiline
-              minRows={3}
-              maxRows="Infinity"
-              value={stepResults.analysis}
-              InputProps={{ readOnly: true }}
-              sx={{ mb: 1 }}
-            />
+            <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 1 }}>
+              <ReactMarkdown>
+                {stepResults.analysis}
+              </ReactMarkdown>
+            </Paper>
           </Box>
         )}
 
@@ -88,15 +85,11 @@ const OptimizedPromptOutput = ({
             <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
               优化建议
             </Typography>
-            <TextField
-              fullWidth
-              multiline
-              minRows={3}
-              maxRows="Infinity"
-              value={stepResults.suggestions}
-              InputProps={{ readOnly: true }}
-              sx={{ mb: 1 }}
-            />
+            <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 1 }}>
+              <ReactMarkdown>
+                {stepResults.suggestions}
+              </ReactMarkdown>
+            </Paper>
           </Box>
         )}
 
@@ -105,27 +98,23 @@ const OptimizedPromptOutput = ({
             <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
               任务分解
             </Typography>
-            <TextField
-              fullWidth
-              multiline
-              minRows={3}
-              maxRows="Infinity"
-              value={stepResults.decomposition}
-              InputProps={{ readOnly: true }}
-              sx={{ mb: 1 }}
-            />
+            <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 1 }}>
+              <ReactMarkdown>
+                {stepResults.decomposition}
+              </ReactMarkdown>
+            </Paper>
           </Box>
         )}
 
         {(stepResults.analysis || stepResults.decomposition) && (
           <Button
             variant="contained"
-            color="primary"
+            color={handleCopy.isCopied ? "success" : "primary"}
             onClick={handleCopy}
             startIcon={<ContentCopyIcon />}
             sx={{ mt: 2 }}
           >
-            复制优化结果
+            {handleCopy.isCopied ? "已复制" : "复制优化结果"}
           </Button>
         )}
       </CardContent>

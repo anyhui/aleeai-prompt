@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Grid, Snackbar, Alert, FormControl, Radio, RadioGroup, FormControlLabel } from '@mui/material';
 // import { borderRadius, blur, gradients, shadows } from '../styles/constants';
 import ModelConfig, { defaultConfig, validateConfig, checkConnection as checkApiConnection, commonEndpoints, modelOptions } from '../components/ModelConfig';
 import PromptInput from '../components/PromptInput';
@@ -7,6 +7,7 @@ import OptimizedPromptOutput from '../components/OptimizedPromptOutput';
 import VersionControl from '../components/VersionControl';
 import { getVersionHistory, saveVersion, compareVersions } from '../services/versionControlService';
 import { useAppContext } from '../context/AppContext';
+import TemplateSelector from '../components/TemplateSelector';
 
 
 
@@ -27,6 +28,10 @@ function PromptOptimizer() {
   const [promptId, setPromptId] = useState('default-prompt');
   const [versions, setVersions] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
+
+  // 优化方法选择
+  const [optimizationMethod, setOptimizationMethod] = useState('analysis');
+  const [optimizationTemplateOptions, setOptimizationTemplateOptions] = useState({});
 
   const [config, setConfig] = useState({
     ...defaultConfig,
@@ -88,6 +93,17 @@ function PromptOptimizer() {
         }
         if (data.stats) {
           setOptimizationStats(data.stats);
+        }
+        // 提取优化方法选项
+        if (data.templates) {
+          const templateOptions = {};
+          Object.entries(data.templates).forEach(([key, template]) => {
+            templateOptions[key] = {
+              name: key.toUpperCase(),
+              description: template.system
+            };
+          });
+          setOptimizationTemplateOptions(templateOptions);
         }
       })
       .catch(error => {
@@ -210,7 +226,7 @@ function PromptOptimizer() {
           }
         ]
       })
-    });
+    })
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -397,26 +413,33 @@ function PromptOptimizer() {
       });
       setStartTime(Date.now());
 
-      // 分析和扩展输入
-      const expandedPrompt = await analyzeAndExpandInput(prompt);
-      setStepResults(prev => ({ ...prev, analysis: expandedPrompt }));
-      setOptimizationStep('suggesting');
+      // 根据选择的优化方法执行不同的优化流程
+      if (optimizationMethod === 'analysis') {
+        // 原有的分析流程
+        const expandedPrompt = await analyzeAndExpandInput(prompt);
+        setStepResults(prev => ({ ...prev, analysis: expandedPrompt }));
+        setOptimizationStep('suggesting');
 
-      // 建议改进
-      const enhancements = await suggestEnhancements(prompt);
-      setStepResults(prev => ({ ...prev, suggestions: enhancements }));
-      setOptimizationStep('decomposing');
+        // 建议改进
+        const enhancements = await suggestEnhancements(prompt);
+        setStepResults(prev => ({ ...prev, suggestions: enhancements }));
+        setOptimizationStep('decomposing');
 
-      // 分解和添加推理
-      const decomposition = await decomposeAndAddReasoning(expandedPrompt);
-      setStepResults(prev => ({ ...prev, decomposition }));
+        // 分解和添加推理
+        const decomposition = await decomposeAndAddReasoning(expandedPrompt);
+        setStepResults(prev => ({ ...prev, decomposition }));
 
-      // 组装最终的优化提示词
-      const optimizedResult = [
-        expandedPrompt,
-        enhancements,
-        decomposition
-      ].filter(Boolean).join('\n\n');
+        // 组装最终的优化提示词
+        const optimizedResult = [
+          expandedPrompt,
+          enhancements,
+          decomposition
+        ].filter(Boolean).join('\n\n');
+      } else {
+        // 使用选定的优化方法
+        const result = await optimizeWithSelectedMethod(prompt, optimizationMethod);
+        setStepResults(prev => ({ ...prev, analysis: result }));
+      }
 
       setOptimizationStep('completed');
       
@@ -440,6 +463,95 @@ function PromptOptimizer() {
     }
   };
 
+  // 添加新的优化方法处理函数
+  const optimizeWithSelectedMethod = async (inputPrompt, method) => {
+    if (!optimizerTemplates) {
+      throw new Error('优化器模板尚未加载完成');
+    }
+    
+    const template = optimizerTemplates.templates[method];
+    if (!template) {
+      throw new Error(`未找到优化方法: ${method}`);
+    }
+    
+    const response = await fetch(config.apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        model: config.model,
+        stream: true,  // 启用流式响应
+        messages: [
+          {
+            role: 'system',
+            content: template.system
+          },
+          {
+            role: 'user',
+            content: template.user.replace('${inputPrompt}', inputPrompt)
+          }
+        ]
+      })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          
+          try {
+            if (data) {
+              const json = JSON.parse(data);
+              if (json.choices?.[0]?.delta?.content) {
+                result += json.choices[0].delta.content;
+                setStepResults(prev => ({
+                  ...prev,
+                  analysis: result
+                }));
+
+                if (json.usage) {
+                  totalPromptTokens = json.usage.prompt_tokens || 0;
+                  totalCompletionTokens = json.usage.completion_tokens || 0;
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to parse JSON:', error, 'Data:', data);
+            if (error.message.includes('429')) {
+              throw new Error('请求过于频繁，请稍后再试');
+            }
+            throw new Error(`Invalid API response format: ${data}`);
+          }
+        }
+      }
+    }
+
+    setStats(prev => ({
+      ...prev,
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      elapsedTime: Math.floor((Date.now() - startTime) / 1000)
+    }));
+
+    return result;
+  };
+
   // 更新计时器
   useEffect(() => {
     let timer;
@@ -461,6 +573,8 @@ function PromptOptimizer() {
       if (timer) clearInterval(timer);
     };
   }, [startTime, optimizationStep]);
+
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -490,6 +604,14 @@ function PromptOptimizer() {
         }
       }
       
+      // 设置复制状态为true
+      setIsCopied(true);
+      
+      // 2秒后重置复制状态
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+      
       setSnackbarMessage('已复制优化结果');
       setSnackbarSeverity('success');
     } catch (error) {
@@ -500,6 +622,9 @@ function PromptOptimizer() {
       setSnackbarOpen(true);
     }
   };
+  
+  // 为handleCopy函数添加isCopied属性，以便在组件中使用
+  handleCopy.isCopied = isCopied;
 
   return (
     <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh' }}>
@@ -541,6 +666,80 @@ function PromptOptimizer() {
             setSnackbarSeverity={setSnackbarSeverity}
             setSnackbarOpen={setSnackbarOpen}
           />
+        </Grid>
+        
+        {/* 添加优化方法选择器 */}
+        <Grid item xs={12}>
+          <Box sx={{
+            p: 2,
+            borderRadius: 2,
+            bgcolor: 'background.paper',
+            boxShadow: 1,
+            mb: 2
+          }}>
+            <Typography variant="h6" gutterBottom>
+              选择优化方法
+            </Typography>
+            <FormControl component="fieldset">
+              <RadioGroup
+                row
+                aria-label="optimization-method"
+                name="optimization-method"
+                value={optimizationMethod}
+                onChange={(e) => setOptimizationMethod(e.target.value)}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+                  gap: 2
+                }}
+              >
+                <FormControlLabel 
+                  value="analysis" 
+                  control={<Radio />} 
+                  label="综合分析优化"
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel 
+                  value="cfpo" 
+                  control={<Radio />} 
+                  label="内容-格式集成优化"
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel 
+                  value="ape" 
+                  control={<Radio />} 
+                  label="自动化提示词工程"
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel 
+                  value="broke" 
+                  control={<Radio />} 
+                  label="BROKE框架优化"
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel 
+                  value="chat" 
+                  control={<Radio />} 
+                  label="CHAT框架优化"
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+                <FormControlLabel 
+                  value="crispe" 
+                  control={<Radio />} 
+                  label="CRISPE框架优化"
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
+                />
+              </RadioGroup>
+            </FormControl>
+            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+              {optimizationMethod === 'analysis' && '综合分析优化：全面分析提示词并提供详细的优化建议'}
+              {optimizationMethod === 'cfpo' && '内容-格式集成优化：分析提示词的内容和格式，提供优化建议'}
+              {optimizationMethod === 'ape' && '自动化提示词工程：通过系统化方法优化提示词'}
+              {optimizationMethod === 'broke' && 'BROKE框架：通过Background、Role、Objective、Key Context、Execution Plan优化'}
+              {optimizationMethod === 'chat' && 'CHAT框架：通过Context、Hint、Action、Task优化'}
+              {optimizationMethod === 'crispe' && 'CRISPE框架：通过Capacity、Role、Insight、Specification、Purpose、Example优化'}
+            </Typography>
+          </Box>
         </Grid>
         
         <Grid item xs={12}>
