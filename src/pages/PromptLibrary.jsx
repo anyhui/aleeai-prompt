@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Box, Typography, Grid, Card, CardContent, IconButton, Chip, Snackbar, CircularProgress, Alert, Popper, Paper, Fade } from '@mui/material'
+import { Box, Typography, Grid, Card, CardContent, IconButton, Chip, Snackbar, CircularProgress, Alert, Button, Collapse } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import { transitions, borderRadius, blur, gradients, shadows } from '../styles/constants'
 import LoadingScreen from '../components/LoadingScreen'
 import { PromptLibrarySkeleton } from '../components/SkeletonLoader';
@@ -14,8 +17,8 @@ function PromptLibrary() {
   const [error, setError] = useState(null)
   const [availableTags, setAvailableTags] = useState([])
   const [selectedTags, setSelectedTags] = useState([])
-  const [hoveredPrompt, setHoveredPrompt] = useState(null)
-  const [anchorEl, setAnchorEl] = useState(null)
+  const [expandedPromptId, setExpandedPromptId] = useState(null)
+  const [copiedPromptId, setCopiedPromptId] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const itemsPerPage = 12
@@ -83,9 +86,15 @@ function PromptLibrary() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadMore]);
 
-  const handleCopy = useCallback((text) => {
+  const handleCopy = useCallback((text, promptId) => {
     navigator.clipboard.writeText(text).then(() => {
       setSnackbarOpen(true);
+      setCopiedPromptId(promptId);
+      
+      // 2秒后重置复制状态
+      setTimeout(() => {
+        setCopiedPromptId(null);
+      }, 2000);
     });
   }, []);
 
@@ -98,15 +107,9 @@ function PromptLibrary() {
     setPage(1);
   }, []);
 
-  const handleMouseEnter = useCallback((event, prompt) => {
-    setHoveredPrompt(prompt);
-    setAnchorEl(event.currentTarget);
+  const handleToggleExpand = useCallback((promptId) => {
+    setExpandedPromptId(prev => prev === promptId ? null : promptId);
   }, []);
-
-  const handleMouseLeave = () => {
-    setHoveredPrompt(null)
-    setAnchorEl(null)
-  }
 
   if (loading) {
     return <PromptLibrarySkeleton />
@@ -184,7 +187,8 @@ function PromptLibrary() {
       <Grid container spacing={3} sx={{ mt: { xs: 3, sm: 4 } }}>
         {displayedPrompts.map((prompt, index) => (
           <Grid item xs={6} sm={6} md={4} key={index} sx={{
-            display: 'flex'
+            display: 'flex',
+            alignSelf: 'flex-start'
           }}>
             <Card 
               sx={{ 
@@ -216,8 +220,7 @@ function PromptLibrary() {
                   }
                 }
               }}
-              onMouseEnter={(e) => handleMouseEnter(e, prompt)}
-              onMouseLeave={handleMouseLeave}
+
             >
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
@@ -230,10 +233,10 @@ function PromptLibrary() {
                     </Typography>
                   </Box>
                   <IconButton 
-                    onClick={() => prompt?.prompt ? handleCopy(prompt.prompt) : null}
+                    onClick={() => prompt?.prompt ? handleCopy(prompt.prompt, index) : null}
                     size="small"
                     disabled={!prompt?.prompt}
-                    sx={{ ml: 1 }}
+                    color={copiedPromptId === index ? "success" : "default"}
                   >
                     <ContentCopyIcon />
                   </IconButton>
@@ -255,6 +258,51 @@ function PromptLibrary() {
                 }}>
                   {prompt.description}
                 </Typography>
+                {prompt?.prompt && (
+                  <Button 
+                    variant="text" 
+                    size="small" 
+                    onClick={() => handleToggleExpand(index)}
+                    sx={{ 
+                      mt: 1,
+                      mb: -1,
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'center',
+                      color: 'text.secondary'
+                    }}
+                    endIcon={expandedPromptId === index ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                  >
+                    {expandedPromptId === index ? '收起' : '查看详细'}
+                  </Button>
+                )}
+                <Collapse in={expandedPromptId === index} timeout="auto" unmountOnExit>
+                  <Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      提示词内容：
+                    </Typography>
+                    <Typography variant="body2" sx={{ 
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                      p: 1.5,
+                      borderRadius: 1,
+                      mb: 2
+                    }}>
+                      {prompt.prompt}
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<ContentCopyIcon />}
+                      onClick={() => handleCopy(prompt.prompt, index)}
+                      color={copiedPromptId === index ? "success" : "primary"}
+                      fullWidth
+                    >
+                      {copiedPromptId === index ? '已复制' : '复制提示词'}
+                    </Button>
+                  </Box>
+                </Collapse>
               </CardContent>
             </Card>
           </Grid>
@@ -283,34 +331,7 @@ function PromptLibrary() {
         </Box>
       )}
 
-      <Popper
-        open={Boolean(hoveredPrompt)}
-        anchorEl={anchorEl}
-        placement="right-start"
-        transition
-        sx={{
-          zIndex: 1300,
-          maxWidth: 400,
-          ml: 1
-        }}
-      >
-        {({ TransitionProps }) => (
-          <Fade {...TransitionProps} timeout={200}>
-            <Paper
-              elevation={4}
-              sx={{
-                p: 2,
-                backgroundColor: 'background.paper',
-                borderRadius: 1
-              }}
-            >
-              <Typography sx={{ whiteSpace: 'pre-wrap' }}>
-                {hoveredPrompt?.prompt}
-              </Typography>
-            </Paper>
-          </Fade>
-        )}
-      </Popper>
+
 
       <Snackbar
         open={snackbarOpen}
