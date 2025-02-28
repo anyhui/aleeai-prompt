@@ -4,7 +4,10 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import { transitions, borderRadius, blur, gradients, shadows } from '../styles/constants'
+import { transitions, borderRadius, blur, gradients, shadows, spacing, zIndex } from '../styles/constants'
+import { fontWeight, fontSize } from '../styles/typography'
+import { StyledChip, ChipsContainer } from '../styles/PromptLibrary.styles'
+import { BaseCard } from '../styles/shared.styles'
 import LoadingScreen from '../components/LoadingScreen'
 import { PromptLibrarySkeleton } from '../components/SkeletonLoader';
 
@@ -112,7 +115,7 @@ function PromptLibrary() {
   }, []);
 
   if (loading) {
-    return <PromptLibrarySkeleton />
+    return <LoadingScreen />
   }
 
   if (error) {
@@ -122,13 +125,12 @@ function PromptLibrary() {
       </Box>
     )
   }
-
   return (
     <Box sx={{ maxWidth: '1200px', mx: 'auto', p: { xs: 2, sm: 4 }, minHeight: '100vh', position: 'relative' }}>
-      <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+      <Box sx={{ mb: { xs: spacing.md, sm: spacing.lg } }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{
-          fontSize: { xs: '1.75rem', sm: '2.5rem' },
-          fontWeight: 700,
+          fontSize: { xs: fontSize['2xl'], sm: fontSize['4xl'] },
+          fontWeight: fontWeight.bold,
           mb: { xs: 1, sm: 2 },
           background: theme => `linear-gradient(120deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
           WebkitBackgroundClip: 'text',
@@ -137,7 +139,7 @@ function PromptLibrary() {
           提示词库
         </Typography>
         <Typography variant="subtitle1" gutterBottom sx={{
-          fontSize: { xs: '1rem', sm: '1.25rem' },
+          fontSize: { xs: fontSize.base, sm: fontSize.lg },
           mb: { xs: 2, sm: 3 },
           color: 'text.secondary',
           maxWidth: '800px'
@@ -146,35 +148,19 @@ function PromptLibrary() {
         </Typography>
       </Box>
 
-      <Box sx={{ mb: 4, mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: 1 }}>
+      <Box sx={{ mb: spacing.lg, mt: spacing.md }}>
+        <ChipsContainer>
           {availableTags.map((tag) => (
-            <Chip
+            <StyledChip
               key={tag}
               label={tag}
               onClick={() => handleTagClick(tag)}
               color={selectedTags.includes(tag) ? 'primary' : 'default'}
               variant={selectedTags.includes(tag) ? 'filled' : 'outlined'}
-              sx={{
-                transition: transitions.spring,
-                opacity: selectedTags.includes(tag) ? 1 : 0.7,
-                transform: selectedTags.includes(tag) ? 'scale(1.1)' : 'scale(1)',
-                boxShadow: theme => selectedTags.includes(tag) 
-                  ? `${shadows.xl} ${theme.palette.primary.main}60`
-                  : 'none',
-                '&:hover': {
-                  opacity: 0.9,
-                  transform: 'scale(1.05)',
-                  boxShadow: theme => `${shadows.md} ${theme.palette.primary.main}40`
-                },
-                '&:active': {
-                  transform: 'scale(0.95)',
-                  transition: transitions.normal
-                }
-              }}
+              className={selectedTags.includes(tag) ? 'selected' : ''}
             />
           ))}
-        </Box>
+        </ChipsContainer>
       </Box>
 
       <Typography variant="subtitle1" sx={{ color: 'text.secondary', minWidth: 'fit-content' }}>
@@ -184,44 +170,13 @@ function PromptLibrary() {
         ).length} 条
       </Typography>
 
-      <Grid container spacing={3} sx={{ mt: { xs: 3, sm: 4 } }}>
+      <Grid container spacing={3} sx={{ mt: { xs: spacing.md, sm: spacing.lg } }}>
         {displayedPrompts.map((prompt, index) => (
           <Grid item xs={6} sm={6} md={4} key={index} sx={{
             display: 'flex',
             alignSelf: 'flex-start'
           }}>
-            <Card 
-              sx={{ 
-                width: '100%',
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                transition: transitions.spring,
-                backdropFilter: blur.lg,
-                background: theme => theme.palette.mode === 'dark' ? gradients.dark.primary : gradients.light.primary,
-                borderRadius: { xs: borderRadius.lg, sm: borderRadius.xl },
-                border: theme => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(99, 102, 241, 0.1)'}`,
-                boxShadow: theme => theme.palette.mode === 'dark'
-                  ? `${shadows.lg} rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)`
-                  : `${shadows.lg} rgba(99, 102, 241, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.8)`,
-                '&:hover': {
-                  transform: { xs: 'scale(1.02)', sm: 'translateY(-10px) scale(1.02)' },
-                  boxShadow: theme => theme.palette.mode === 'dark'
-                    ? `${shadows.xl} ${theme.palette.primary.dark}40, inset 0 1px 2px rgba(255, 255, 255, 0.08)`
-                    : `${shadows.xl} ${theme.palette.primary.light}75, inset 0 1px 2px rgba(255, 255, 255, 0.9)`,
-                  border: theme => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : theme.palette.primary.main}`,
-                  background: theme => theme.palette.mode === 'dark' ? gradients.dark.hover : gradients.light.hover,
-                  zIndex: 1
-                },
-                '@media (hover: none)': {
-                  '&:active': {
-                    transform: 'scale(0.98)',
-                    transition: transitions.normal
-                  }
-                }
-              }}
-
-            >
+            <BaseCard>
               <CardContent sx={{ flexGrow: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -286,8 +241,8 @@ function PromptLibrary() {
                       wordBreak: 'break-word',
                       backgroundColor: theme => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
                       p: 1.5,
-                      borderRadius: 1,
-                      mb: 2
+                      borderRadius: borderRadius.xs,
+                      mb: spacing.sm
                     }}>
                       {prompt.prompt}
                     </Typography>
@@ -304,7 +259,7 @@ function PromptLibrary() {
                   </Box>
                 </Collapse>
               </CardContent>
-            </Card>
+            </BaseCard>
           </Grid>
         ))}
       </Grid>
@@ -315,14 +270,14 @@ function PromptLibrary() {
           justifyContent: 'center',
           alignItems: 'center',
           position: 'fixed',
-          bottom: 20,
+          bottom: spacing.md,
           left: '50%',
           transform: 'translateX(-50%)',
-          zIndex: 1000,
+          zIndex: zIndex.tooltip,
           backgroundColor: theme => theme.palette.background.paper,
-          borderRadius: 2,
-          padding: 2,
-          boxShadow: theme => `0 4px 20px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)'}`,
+          borderRadius: borderRadius.sm,
+          padding: spacing.sm,
+          boxShadow: theme => `${shadows.md} ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)'}`,
         }}>
           <CircularProgress size={24} sx={{ mr: 1 }} />
           <Typography variant="body2" color="text.secondary">

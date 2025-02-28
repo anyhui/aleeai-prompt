@@ -329,7 +329,7 @@ function PromptGenerator() {
       </Paper>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={6}>
+        <Grid item xs={6} md={12}>
           <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, boxShadow: theme => `0 8px 32px ${theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)'}` }}>
             <PromptForm
               fields={currentFields}
