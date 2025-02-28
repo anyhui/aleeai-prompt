@@ -1,75 +1,29 @@
 import React from 'react';
-import { Box, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem, Alert, CircularProgress, Slider } from '@mui/material';
+import { Box, Typography, Alert, CircularProgress, Link } from '@mui/material';
+import { apiConfig } from '../config/appConfig';
+import { validateConfig, checkApiConnection as checkApiConnectionService } from '../services/apiService';
+import { SelectInput, TextInput, SliderInput, PresetInput } from './common/FormComponents';
+import { ActionButton, FormField } from './common/CommonComponents';
+import { GlassCard, GradientText } from '../styles/shared.styles';
+import { transitions, shadows, borderRadius } from '../styles/constants';
+import { alphaColors } from '../styles/colors';
 
-// 默认配置
-const defaultConfig = {
-  apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
-  model: import.meta.env.VITE_DEFAULT_MODEL || 'gpt-4',
-  apiKey: import.meta.env.VITE_DEFAULT_API_KEY || ''
-};
-
-// 验证配置
-const validateConfig = (config) => {
-  if (!config.apiEndpoint) {
-    throw new Error('API端点未配置');
-  }
-  if (!config.model) {
-    throw new Error('模型未选择');
-  }
-  if (!config.apiKey) {
-    throw new Error('API密钥未配置');
-  }
-};
-
-// 常用端点
-const commonEndpoints = [
-  { label: 'OpenAI', value: 'https://api.openai.com/v1/chat/completions' },
-  { label: 'Anthropic', value: 'https://api.anthropic.com/v1/messages' },
-  { label: 'Azure OpenAI', value: 'https://your-resource.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-05-15' },
-  { label: 'Deepseek', value: 'https://api.deepseek.com/v1/chat/completions' },
-  { label: 'SiliconFlow', value: 'https://api.siliconflow.cn/v1/chat/completions' },
-  { label: '自定义', value: 'custom' }
-];
-
-// 模型选项
-const modelOptions = [
-  { label: 'GPT-4', value: 'gpt-4' },
-  { label: 'GPT-4 Turbo', value: 'gpt-4-1106-preview' },
-  { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
-  { label: 'Claude 2.1', value: 'claude-2.1' },
-  { label: 'Claude Instant', value: 'claude-instant-1.2' },
-  { label: 'Deepseek-Chat', value: 'deepseek-chat' },
-  { label: 'Deepseek-Coder', value: 'deepseek-reasoner' },
-  { label: 'SiliconFlow-deepseek-V2.5', value: 'deepseek-ai/DeepSeek-V2.5' },
-  { label: 'SiliconFlow-deepseek-V3', value: 'deepseek-ai/DeepSeek-V3' },
-  { label: 'SiliconFlow-deepseek-R1', value: 'deepseek-ai/DeepSeek-R1' }
-];
+// 导出配置常量，方便其他组件使用
+export const { defaultConfig, defaultEndpoints: commonEndpoints, defaultModels: modelOptions } = apiConfig;
 
 // 检查API连接
-const checkConnection = async (config, setConnectionStatus, setSnackbarMessage, setSnackbarSeverity, setSnackbarOpen) => {
+export const checkConnection = async (config, setConnectionStatus, setSnackbarMessage, setSnackbarSeverity, setSnackbarOpen) => {
   setConnectionStatus(prev => ({ ...prev, isChecking: true, error: null }));
   try {
-    const response = await fetch(config.apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [{ role: 'user', content: 'test' }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`API连接失败: ${response.status} ${response.statusText}`);
+    const result = await checkApiConnectionService(config);
+    
+    if (result.success) {
+      setConnectionStatus(prev => ({ ...prev, isConnected: true, error: null }));
+      setSnackbarMessage('API连接成功！');
+      setSnackbarSeverity('success');
+    } else {
+      throw new Error(result.error);
     }
-
-    setConnectionStatus(prev => ({ ...prev, isConnected: true, error: null }));
-    setSnackbarMessage('API连接成功！');
-    setSnackbarSeverity('success');
-    setSnackbarOpen(true);
   } catch (error) {
     setConnectionStatus(prev => ({
       ...prev,
@@ -78,42 +32,37 @@ const checkConnection = async (config, setConnectionStatus, setSnackbarMessage, 
     }));
     setSnackbarMessage(`API连接失败: ${error.message}`);
     setSnackbarSeverity('error');
-    setSnackbarOpen(true);
   } finally {
+    setSnackbarOpen(true);
     setConnectionStatus(prev => ({ ...prev, isChecking: false }));
   }
 };
+
+// 导出验证函数，方便其他组件使用
+export { validateConfig };
 
 const ModelConfig = ({ 
   config, 
   setConfig, 
   connectionStatus, 
   setConnectionStatus, 
-  customEndpoint, 
-  setCustomEndpoint, 
-  isCustomEndpoint, 
-  setIsCustomEndpoint,
   setSnackbarMessage,
   setSnackbarSeverity,
   setSnackbarOpen
 }) => {
   const handleEndpointChange = (event) => {
     const value = event.target.value;
-    if (value === 'custom') {
-      setIsCustomEndpoint(true);
-      setConfig(prev => ({ ...prev, apiEndpoint: customEndpoint }));
-    } else {
-      setIsCustomEndpoint(false);
-      setConfig(prev => ({ ...prev, apiEndpoint: value }));
-    }
+    setConfig(prev => ({ ...prev, apiEndpoint: value }));
+    setConnectionStatus(prev => ({ ...prev, isConnected: false }));
   };
 
-  const handleCustomEndpointChange = (event) => {
-    const value = event.target.value;
-    setCustomEndpoint(value);
-    if (isCustomEndpoint) {
+  const handlePresetClick = (fieldId, value) => {
+    if (fieldId === 'apiEndpoint') {
       setConfig(prev => ({ ...prev, apiEndpoint: value }));
+    } else if (fieldId === 'model') {
+      setConfig(prev => ({ ...prev, model: value }));
     }
+    setConnectionStatus(prev => ({ ...prev, isConnected: false }));
   };
 
   const handleConfigChange = (field) => (event) => {
@@ -129,97 +78,144 @@ const ModelConfig = ({
   };
 
   return (
-    <>
-      <Typography variant="h6" gutterBottom>
+    <GlassCard>
+      <GradientText variant="h6" gutterBottom sx={{ mb: 3 }}>
         配置信息
-      </Typography>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <FormControl fullWidth>
-          <InputLabel>API端点</InputLabel>
-          <Select
-            value={isCustomEndpoint ? 'custom' : config.apiEndpoint}
-            label="API端点"
-            onChange={handleEndpointChange}
-          >
-            {commonEndpoints.map((endpoint) => (
-              <MenuItem key={endpoint.value} value={endpoint.value}>
-                {endpoint.label}
-              </MenuItem>
-            ))}
-          </Select>
-          {isCustomEndpoint && (
-            <TextField
-              fullWidth
-              label="自定义API端点"
-              value={customEndpoint}
-              onChange={handleCustomEndpointChange}
-              sx={{ mt: 2 }}
-            />
-          )}
-        </FormControl>
-        <FormControl fullWidth>
-          <InputLabel>模型</InputLabel>
-          <Select
-            value={config.model}
-            label="模型"
-            onChange={handleConfigChange('model')}
-          >
-            {modelOptions.map((model) => (
-              <MenuItem key={model.value} value={model.value}>
-                {model.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <TextField
-          fullWidth
+      </GradientText>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' }, 
+        gap: 2, 
+        mb: 3,
+        '& > *': {
+          flex: 1,
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-2px)'
+          }
+        }
+      }}>
+        <PresetInput
+          id="apiEndpoint"
+          label="API端点"
+          value={config.apiEndpoint}
+          onChange={handleEndpointChange}
+          presets={commonEndpoints.map(option => option.value)}
+          onPresetClick={handlePresetClick}
+          placeholder="输入API端点或从下方选择"
+          helperText="点击输入框可快速选择"
+        />
+        <PresetInput
+          id="model"
+          label="模型"
+          value={config.model}
+          onChange={handleConfigChange('model')}
+          presets={modelOptions.map(option => option.value)}
+          onPresetClick={handlePresetClick}
+          placeholder="输入模型名称或从下方选择"
+          helperText="点击输入框可快速选择"
+        />
+        <TextInput
           label="API密钥"
           type="password"
           value={config.apiKey}
           onChange={handleConfigChange('apiKey')}
         />
-        <Box>
-          <Typography gutterBottom>Temperature (创造性程度)</Typography>
-          <Slider
-            value={config.temperature}
-            onChange={(e, newValue) => setConfig(prev => ({ ...prev, temperature: newValue }))}
-            min={0}
-            max={2}
-            step={0.1}
-            valueLabelDisplay="auto"
-            sx={{ width: '100%' }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-          <Button
-            variant="contained"
-            onClick={handleCheckConnection}
-            disabled={connectionStatus.isChecking}
-            sx={{ mr: 2 }}
-          >
-            {connectionStatus.isChecking ? (
-              <>
-                <CircularProgress size={20} sx={{ mr: 1 }} />
-                检查中...
-              </>
-            ) : (
-              '检查连接'
-            )}
-          </Button>
-          {connectionStatus.isConnected && (
-            <Alert severity="success" sx={{ flex: 1 }}>
-              API连接正常
-            </Alert>
-          )}
-          {connectionStatus.error && (
-            <Alert severity="error" sx={{ flex: 1 }}>
-              {connectionStatus.error}
-            </Alert>
-          )}
-        </Box>
       </Box>
-    </>
+      <Typography 
+        variant="body2" 
+        sx={{ 
+          fontWeight: 700,
+          color: 'error.main',
+          textAlign: 'center',
+          mb: 3,
+          p: 2,
+          borderRadius: borderRadius.sm,
+          bgcolor: theme => theme.palette.mode === 'dark' ? alphaColors.dark.white.low : alphaColors.light.black.low,
+          border: '1px solid',
+          borderColor: 'error.main'
+        }}
+      >
+        获取API密钥 &gt;&gt;&gt;
+        <Link 
+          href="https://cloud.siliconflow.cn/i/VHoWjuwZ" 
+          target="_blank" 
+          rel="noopener"
+          sx={{
+            mx: 1,
+            textDecoration: 'none',
+            '&:hover': {
+              textDecoration: 'underline'
+            }
+          }}
+        >
+          请注册硅基流动
+        </Link>
+        &lt;&lt;&lt;
+      </Typography>
+      <SliderInput
+        label="Temperature (创造性程度)"
+        value={config.temperature}
+        onChange={(e, newValue) => setConfig(prev => ({ ...prev, temperature: newValue }))}
+        min={0}
+        max={2}
+        step={0.1}
+        valueLabelDisplay="auto"
+        sx={{ mb: 3 }}
+      />
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center',
+        gap: 2,
+        flexWrap: { xs: 'wrap', sm: 'nowrap' }
+      }}>
+        <ActionButton
+          variant="contained"
+          onClick={handleCheckConnection}
+          disabled={connectionStatus.isChecking}
+          sx={{
+            minWidth: 120,
+            transition: transitions.normal,
+            '&:not(:disabled):hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: shadows.md
+            }
+          }}
+        >
+          {connectionStatus.isChecking ? (
+            <>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              检查中...
+            </>
+          ) : (
+            '检查连接'
+          )}
+        </ActionButton>
+        {connectionStatus.isConnected && (
+          <Alert 
+            severity="success" 
+            sx={{ 
+              flex: 1,
+              animation: 'fadeIn 0.5s ease'
+            }}
+          >
+            API连接正常
+          </Alert>
+        )}
+        {connectionStatus.error && (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              flex: 1,
+              animation: 'fadeIn 0.5s ease'
+            }}
+          >
+            {connectionStatus.error}
+          </Alert>
+        )}
+      </Box>
+    </GlassCard>
   );
 };
 
-export { ModelConfig as default, defaultConfig, validateConfig, commonEndpoints, modelOptions, checkConnection };
+export default ModelConfig;

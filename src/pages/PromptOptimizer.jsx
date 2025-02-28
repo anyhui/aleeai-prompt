@@ -6,16 +6,22 @@ import PromptInput from '../components/PromptInput';
 import OptimizedPromptOutput from '../components/OptimizedPromptOutput';
 import VersionControl from '../components/VersionControl';
 import { getVersionHistory, saveVersion, compareVersions } from '../services/versionControlService';
+import { useAppContext } from '../context/AppContext';
 
 
 
 function PromptOptimizer() {
+  const { actions } = useAppContext();
   const [optimizationStep, setOptimizationStep] = useState('idle');
   const [stepResults, setStepResults] = useState({
     analysis: '',
     suggestions: '',
     decomposition: ''
   });
+  
+  // 优化步骤配置
+  const [optimizationSteps, setOptimizationSteps] = useState([]);
+  const [optimizationStats, setOptimizationStats] = useState({});
   
   // 版本控制相关状态
   const [promptId, setPromptId] = useState('default-prompt');
@@ -67,7 +73,35 @@ function PromptOptimizer() {
   //   checkApiConnection(config, setConnectionStatus, setSnackbarMessage, setSnackbarSeverity, setSnackbarOpen);
   // };
 
+  // 加载优化器模板配置
+  const [optimizerTemplates, setOptimizerTemplates] = useState(null);
+  
+  useEffect(() => {
+    // 加载优化器模板配置
+    fetch('/optimizer_templates.json')
+      .then(response => response.json())
+      .then(data => {
+        setOptimizerTemplates(data);
+        // 初始化优化步骤和统计信息
+        if (data.steps) {
+          setOptimizationSteps(data.steps);
+        }
+        if (data.stats) {
+          setOptimizationStats(data.stats);
+        }
+      })
+      .catch(error => {
+        console.error('加载优化器模板失败:', error);
+        setError('加载优化器模板失败');
+      });
+  }, []);
+
   const analyzeAndExpandInput = async (inputPrompt) => {
+    if (!optimizerTemplates) {
+      throw new Error('优化器模板尚未加载完成');
+    }
+    
+    const template = optimizerTemplates.templates.analysis;
     const response = await fetch(config.apiEndpoint, {
       method: 'POST',
       headers: {
@@ -81,116 +115,11 @@ function PromptOptimizer() {
         messages: [
           {
             role: 'system',
-            content: '你是一个高度智能的AI助手。你的任务是分析和理解提供的提示，然后严格按照给定的指示提供清晰简洁的回应。不要包含任何超出所需输出的额外解释或上下文。'
+            content: template.system
           },
           {
             role: 'user',
-            content: `分析提供的提示词并为以下关键方面生成简洁的答案：
-
-        - **提示的主要目标：** 识别提供的提示中的核心主题或请求。
-        - **角色：** 推荐AI模型采用的最相关角色（例如：专家、教师、对话式等）。
-        - **最佳输出长度：** 根据任务建议最佳输出长度（短、简短、中等、长），如果适合的话，给出大致的字数。
-        - **最方便的输出格式：** 推荐结果的最佳格式（例如：列表、段落、代码片段、表格、JSON等）。
-        - **具体要求：** 突出显示提示中明确或暗含的任何特殊条件、规则或期望。
-        - **建议改进：** 提供如何修改或增强提示以获得更精确或高效输出的建议。
-        - **一次性提示：** 创建一个相关示例来指导输出生成。
-        
-        然后使用它们重新构建和扩展提供的提示词。
-        以文本格式返回扩展后的提示。避免解释生成过程。
-
-        示例1：
-        提示词："向一个10岁的孩子解释量子纠缠。"
-        
-        *思考过程*：
-        - **提示的主要目标：** 为儿童简化复杂的量子物理概念。
-        - **角色：** 耐心、友好的老师
-        - **最佳输出长度：** 简短（100-150字）
-        - **最方便的输出格式：** 带有类比的叙述
-        - **具体要求：** 适合年龄的解释（10岁）
-        - **建议改进：**
-            - 使用具体的类比
-            - 包含互动元素
-            - 添加后续问题
-            - 建议使用视觉辅助
-        - **一次性提示：**
-        输出示例：
-            "想象你有两双特别的袜子。当你把一只袜子放在你的房间，另一只放在厨房时，
-            神奇的事情发生了！无论对一只袜子做什么，另一只袜子都会立即受到影响。
-            如果你把一只袜子翻过来，另一只袜子也会自动翻过来，不管它们相距多远！"
-        
-        *输出*：
-        作为一个友好的科学老师，请使用以下指南向10岁的学生解释量子纠缠：
-
-        从使用日常物品的类比开始
-        使用简单、清晰的语言，避免技术术语
-        包含2-3个演示概念的互动示例
-        添加能激发好奇心的有趣事实
-        以简单的问题结束以检查理解程度
-        保持解释简短（100-150字）
-
-        按以下结构组织你的解释：
-        
-        开场类比
-        主要解释和示例
-        互动"如果这样呢？场景
-        关于量子纠缠的有趣事实
-        检查理解的问题
-
-        请记住在整个讲解过程中保持热情和鼓励的语气。
-        
-        输出示例：
-        想象你有两双特殊的袜子。当你把一只袜子放在房间里，另一只袜子放在厨房里时，
-        神奇的事情发生了！一只袜子发生的任何事情都会立即影响另一只袜子。
-        如果你把一只袜子翻过来，另一只袜子也会自动翻过来，不管它们相隔多远！
-        示例2：
-        提示词："编写一个函数来计算数字的阶乘。"
-        
-        ##思考过程##
-        *子任务1*：
-        - **描述**：定义什么是阶乘。
-        - **推理**：从定义开始确保用户理解所需的数学运算。
-        - **成功标准**：提供一个简洁的定义和示例（例如，5! = 5 x 4 x 3 x 2 x 1 = 120）。
-        *子任务2*：
-        - **描述**：编写阶乘函数的基本情况。
-        - **推理**：在递归编程中，定义基本情况对于避免无限递归至关重要。
-        - **成功标准**：包含一个明确的基本情况，如\`n = 1\`，以确保递归终止。
-        *子任务3*：
-        - **描述**：实现阶乘函数的递归步骤。
-        - **推理**：递归情况应该反映阶乘的数学定义。
-        - **成功标准**：函数应该对正整数返回\`n * factorial(n-1)\`。
-        
-        示例3：
-        提示词："解释植物进行光合作用的过程。"
-
-        ##思考过程##
-        *子任务1*：
-        - **描述**：定义光合作用及其在植物中的整体目的。
-        - **推理**：从定义开始确保用户理解所需的基本概念。
-        - **成功标准**：提供一个简洁的定义和示例（例如，植物如何将光能转化为化学能）。
-        *子任务2*：
-        - **描述**：编写光合作用的基本过程。
-        - **推理**：在生物学中，理解基本过程对于避免混淆至关重要。
-        - **成功标准**：包含一个明确的过程说明，确保理解的完整性。
-        *子任务3*：
-        - **描述**：实现光合作用的具体步骤。
-        - **推理**：具体步骤应该反映光合作用的科学定义。
-        - **成功标准**：过程应该清晰地展示从光能到化学能的转化。
-
-        示例4：
-        提示词："设计一个用户友好的移动应用登录界面。"
-
-        ##思考过程##
-        *子任务1*：
-        - **描述**：确定关键用户界面元素（例如，用户名字段、密码字段、登录按钮）。
-        - **推理**：确定这些核心元素确保界面包含必要的功能组件。
-        - **成功标准**：界面应包含用户名输入、密码输入和清晰标记的登录按钮。
-        *子任务2*：
-        - **描述**：专注于用户体验，确保简单性和直观导航。
-        - **推理**：直观的设计确保用户在登录过程中有流畅的体验，减少摩擦。
-        - **成功标准**：布局应该简约，标签清晰，使登录过程简单快捷。
-
-        现在，分析以下提示，然后仅返回生成的输出：
-提示词：${inputPrompt}`
+            content: template.user.replace('${inputPrompt}', inputPrompt)
           }
         ]
       })
@@ -255,6 +184,11 @@ function PromptOptimizer() {
   };
 
   const decomposeAndAddReasoning = async (expandedPrompt) => {
+    if (!optimizerTemplates) {
+      throw new Error('优化器模板尚未加载完成');
+    }
+    
+    const template = optimizerTemplates.templates.decomposition;
     const response = await fetch(config.apiEndpoint, {
       method: 'POST',
       headers: {
@@ -268,17 +202,11 @@ function PromptOptimizer() {
         messages: [
           {
             role: 'system',
-            content: '你是一个高度能干的AI助手，负责改进复杂任务的执行。'
+            content: template.system
           },
           {
             role: 'user',
-            content: `分析提供的提示词，并生成以下输出：
-
-- **子任务分解：** 将提示中描述的任务分解为AI模型需要处理的可管理且具体的子任务。
-- **思维链推理：** 对于涉及批判性思维或复杂步骤的子任务，使用逐步方法添加推理以改进决策和输出质量。
-- **成功标准：** 为每个子任务定义构成成功完成的要素，确保对预期结果有明确的指导。
-
-提示词：${expandedPrompt}`
+            content: template.user.replace('${expandedPrompt}', expandedPrompt)
           }
         ]
       })
@@ -339,6 +267,11 @@ function PromptOptimizer() {
   };
 
   const suggestEnhancements = async (inputPrompt, tools_dict = {}) => {
+    if (!optimizerTemplates) {
+      throw new Error('优化器模板尚未加载完成');
+    }
+    
+    const template = optimizerTemplates.templates.suggestions;
     const response = await fetch(config.apiEndpoint, {
       method: 'POST',
       headers: {
@@ -352,11 +285,11 @@ function PromptOptimizer() {
         messages: [
           {
             role: 'system',
-            content: '你是一个专门负责参考建议和工具集成的高度智能助手。'
+            content: template.system
           },
           {
             role: 'user',
-            content: `分析提供的提示词和可用的字典来推荐改进：${inputPrompt}`
+            content: template.user.replace('${inputPrompt}', inputPrompt)
           }
         ]
       })
@@ -498,6 +431,9 @@ function PromptOptimizer() {
 
     } catch (err) {
       setError(err.message);
+      setSnackbarMessage(`优化失败: ${err.message}`);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
       setOptimizationStep('error');
     } finally {
       setLoading(false);

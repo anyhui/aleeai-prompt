@@ -74,7 +74,8 @@ const OptimizedPromptOutput = ({
             <TextField
               fullWidth
               multiline
-              rows={6}
+              minRows={3}
+              maxRows="Infinity"
               value={stepResults.analysis}
               InputProps={{ readOnly: true }}
               sx={{ mb: 1 }}
@@ -90,7 +91,8 @@ const OptimizedPromptOutput = ({
             <TextField
               fullWidth
               multiline
-              rows={4}
+              minRows={3}
+              maxRows="Infinity"
               value={stepResults.suggestions}
               InputProps={{ readOnly: true }}
               sx={{ mb: 1 }}
@@ -106,7 +108,8 @@ const OptimizedPromptOutput = ({
             <TextField
               fullWidth
               multiline
-              rows={6}
+              minRows={3}
+              maxRows="Infinity"
               value={stepResults.decomposition}
               InputProps={{ readOnly: true }}
               sx={{ mb: 1 }}

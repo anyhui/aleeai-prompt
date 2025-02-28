@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { Toolbar, CssBaseline, Container, Typography, Box } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
@@ -7,13 +7,16 @@ import { StyledAppBar, StyledTitle, StyledNavButton, MainContainer, Footer, Root
 import DonateButton from './components/DonateButton'
 import ThemeManager from './components/ThemeManager'
 
-// 页面组件将在后续创建
+// 页面组件
 import PromptLibrary from './pages/PromptLibrary'
 import PromptGenerator from './pages/PromptGenerator'
 import PromptOptimizer from './pages/PromptOptimizer'
 
 // 导入主题映射
 import { themeMap as themes } from './theme'
+
+// 导入AppContext提供者和钩子
+import { AppProvider, useAppContext } from './context/AppContext'
 
 const evaluationCriteria = {
   relevance: { label: '相关性', description: '输出是否符合需求' },
@@ -34,7 +37,8 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={themes[currentTheme]}>
+    <AppProvider>
+      <ThemeProvider theme={themes[currentTheme]}>
         <CssBaseline />
         <RootBox>
           <StyledAppBar position="fixed">
@@ -90,7 +94,7 @@ function App() {
           <DonateButton />
         </RootBox>
       </ThemeProvider>
-
+    </AppProvider>
   )
 }
 
