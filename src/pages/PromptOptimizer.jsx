@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Snackbar, Alert } from '@mui/material';
-import { borderRadius, blur, gradients, shadows } from '../styles/constants';
+// import { borderRadius, blur, gradients, shadows } from '../styles/constants';
 import ModelConfig, { defaultConfig, validateConfig, checkConnection as checkApiConnection, commonEndpoints, modelOptions } from '../components/ModelConfig';
 import PromptInput from '../components/PromptInput';
 import OptimizedPromptOutput from '../components/OptimizedPromptOutput';
@@ -46,7 +46,6 @@ function PromptOptimizer() {
 
 
   const [prompt, setPrompt] = useState('');
-  const [optimizedPrompt, setOptimizedPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -64,9 +63,9 @@ function PromptOptimizer() {
     }
   }, [promptId]);
 
-  const checkConnection = () => {
-    checkApiConnection(config, setConnectionStatus, setSnackbarMessage, setSnackbarSeverity, setSnackbarOpen);
-  };
+  // const checkConnection = () => {
+  //   checkApiConnection(config, setConnectionStatus, setSnackbarMessage, setSnackbarSeverity, setSnackbarOpen);
+  // };
 
   const analyzeAndExpandInput = async (inputPrompt) => {
     const response = await fetch(config.apiEndpoint, {
@@ -486,7 +485,6 @@ function PromptOptimizer() {
         decomposition
       ].filter(Boolean).join('\n\n');
 
-      setOptimizedPrompt(optimizedResult);
       setOptimizationStep('completed');
       
       // 自动保存优化后的版本

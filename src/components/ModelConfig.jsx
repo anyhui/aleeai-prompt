@@ -5,7 +5,7 @@ import { Box, Typography, TextField, Button, FormControl, InputLabel, Select, Me
 const defaultConfig = {
   apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
   model: import.meta.env.VITE_DEFAULT_MODEL || 'gpt-4',
-  apiKey: import.meta.env.VITE_API_KEY || 'xxx'
+  apiKey: import.meta.env.VITE_DEFAULT_API_KEY || ''
 };
 
 // 验证配置
