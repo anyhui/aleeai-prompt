@@ -122,6 +122,22 @@ const ModelConfig = ({
           onChange={handleConfigChange('apiKey')}
         />
       </Box>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 700,
+          color: 'error.main',
+          textAlign: 'center',
+          mb: 3,
+          p: 2,
+          borderRadius: borderRadius.sm,
+          bgcolor: theme => theme.palette.mode === 'dark'? alphaColors.dark.white.low : alphaColors.light.black.low,
+          border: '1px solid',
+          borderColor: 'error.main'
+        }}
+      >
+        如果默认KEY失效，可以注册自己的KEY使用。
+      </Typography>
       <Typography 
         variant="body2" 
         sx={{ 
@@ -136,7 +152,7 @@ const ModelConfig = ({
           borderColor: 'error.main'
         }}
       >
-        获取API密钥 &gt;&gt;&gt;
+        免费注册 &gt;&gt;&gt;
         <Link 
           href="https://cloud.siliconflow.cn/i/VHoWjuwZ" 
           target="_blank" 
@@ -149,9 +165,9 @@ const ModelConfig = ({
             }
           }}
         >
-          请注册硅基流动
+          硅基流动
         </Link>
-        &lt;&lt;&lt;
+        &lt;&lt;&lt;获取KEY
       </Typography>
       <SliderInput
         label="Temperature (创造性程度)"
