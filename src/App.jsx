@@ -16,14 +16,7 @@ import PromptOptimizer from './pages/PromptOptimizer'
 import { themeMap as themes } from './theme'
 
 // 导入AppContext提供者和钩子
-import { AppProvider, useAppContext } from './context/AppContext'
-
-const evaluationCriteria = {
-  relevance: { label: '相关性', description: '输出是否符合需求' },
-  accuracy: { label: '准确性', description: '内容是否准确无误' },
-  completeness: { label: '完整性', description: '是否覆盖所需信息' },
-  creativity: { label: '创新性', description: '是否有创新思路' }
-};
+import { AppProvider } from './context/AppContext'
 
 function App() {
   // 使用主题名称来管理当前主题

@@ -33,7 +33,7 @@ export const apiConfig = {
   defaultConfig: {
     apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
     model: import.meta.env.VITE_DEFAULT_MODEL || 'gpt-4',
-    apiKey: import.meta.env.VITE_DEFAULT_API_KEY || ''
+    apiKey: import.meta.env.VITE_API_KEY || import.meta.env.VITE_DEFAULT_API_KEY || ''
   }
 };
 

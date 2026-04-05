@@ -58,8 +58,8 @@
 ### API密钥获取
 1. 访问 [硅基流动](https://cloud.siliconflow.cn/i/VHoWjuwZ) 注册账号
 2. 在个人中心获取API密钥
-3. 将获取的密钥配置到项目的.env文件中
-4. 如果默认KEY失效，强烈建议注册自己的API密钥
+3. 将获取的密钥配置到项目的 `.env` 文件中
+4. 项目优先读取 `VITE_API_KEY`，并兼容旧配置名 `VITE_DEFAULT_API_KEY`
 
 ### 安装部署
 
@@ -77,7 +77,7 @@ yarn install
 ```
 
 3. 环境配置
-在项目根目录创建 .env 文件：
+在项目根目录创建 `.env` 文件：
 ```env
 VITE_API_ENDPOINT=你的API端点
 VITE_DEFAULT_MODEL=gpt-4
@@ -112,7 +112,7 @@ npm run preview
 - ✅ 智能版本对比功能
 - ✅ 版本变更描述自动生成
 - ✅ 版本回滚与删除功能
-- ✅ 本地存储加密保护
+- ✅ 本地存储持久化（当前为浏览器 `localStorage` 明文存储）
 
 ### 性能优化
 - ⚡ 组件加载速度提升40%

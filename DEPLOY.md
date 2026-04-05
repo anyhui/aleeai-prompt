@@ -98,7 +98,7 @@ npm config set registry https://registry.npmmirror.com
 cp .env.example .env
 ```
 
-2. 编辑 .env 文件，配置必要的环境变量：
+2. 编辑 `.env` 文件，配置必要的环境变量：
 ```env
 # API 配置
 VITE_API_ENDPOINT=你的API端点
@@ -117,6 +117,8 @@ VITE_RATE_LIMIT=60
 VITE_ENABLE_RATE_LIMIT=true
 VITE_CORS_ORIGIN=*
 ```
+
+说明：运行时代码优先读取 `VITE_API_KEY`，同时兼容旧配置名 `VITE_DEFAULT_API_KEY`，建议统一使用 `VITE_API_KEY`。
 
 ### 5. 开发与构建
 
@@ -143,15 +145,17 @@ yarn preview
 #### Docker 部署（推荐）
 1. 构建 Docker 镜像：
 ```bash
-docker build -t aleeai-prompt .
+docker build \
+  --build-arg VITE_API_ENDPOINT=你的API端点 \
+  --build-arg VITE_DEFAULT_MODEL=gpt-4 \
+  --build-arg VITE_API_KEY=你的API密钥 \
+  -t aleeai-prompt .
 ```
 
 2. 运行容器：
 ```bash
 docker run -d \
   -p 80:80 \
-  -e VITE_API_ENDPOINT=你的API端点 \
-  -e VITE_API_KEY=你的API密钥 \
   --name aleeai-prompt \
   aleeai-prompt
 ```

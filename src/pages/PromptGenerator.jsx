@@ -216,7 +216,7 @@ function PromptGenerator() {
 
     // 替换模板中的占位符
     Object.entries(fieldMap).forEach(([key, value]) => {
-      const placeholder = new RegExp(`\{${key}\}`, 'g');
+      const placeholder = new RegExp(`{${key}}`, 'g');
       prompt = prompt.replace(placeholder, value || '');
     });
 

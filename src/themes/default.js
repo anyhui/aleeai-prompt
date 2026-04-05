@@ -1,18 +1,9 @@
 import { createTheme } from '@mui/material/styles';
 import {
-  baseColors,
   darkColors,
-  alphaColors,
-  borderColors,
-  shadowColors,
   gradientColors,
-  spacing,
   borderRadius,
-  transitions,
-  shadows,
-  opacity,
-  blur,
-  zIndex
+  blur
 } from './styles';
 
 // 默认主题 - 基于深色模式

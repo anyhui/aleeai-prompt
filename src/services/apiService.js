@@ -2,7 +2,6 @@
  * API服务模块
  * 提供统一的API调用接口，实现API调用功能组件化
  */
-import { apiConfig } from '../config/appConfig';
 
 /**
  * 发送API请求

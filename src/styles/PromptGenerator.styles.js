@@ -1,5 +1,5 @@
 import { styled } from '@mui/material/styles';
-import { Box, Paper, Tabs } from '@mui/material';
+import { Paper, Tabs } from '@mui/material';
 import { BaseCard, BaseButton, BasePaper } from './shared.styles';
 import { transitions, borderRadius, blur, gradients, shadows, opacity } from './constants';
 

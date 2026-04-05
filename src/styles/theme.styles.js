@@ -635,9 +635,7 @@ export const importTheme = (themeConfig, colorMode) => {
     colorMode.toggleColorMode(themeConfig.mode);
   }
   
-  // 注意：完整的主题自定义需要更复杂的实现
-  // 这里只是一个基本示例，实际应用中可能需要更新全局CSS变量或重新创建主题
-  console.log('主题配置已导入:', themeConfig);
+  return themeConfig;
 };
 
 // 创建主题函数
