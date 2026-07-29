@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 const OptimizedPromptOutput = ({
   optimizationStep,
   stepResults,
+  optimizedResult,
+  setOptimizedResult,
   stats,
   handleCopy,
   error
@@ -106,7 +108,19 @@ const OptimizedPromptOutput = ({
           </Box>
         )}
 
-        {(stepResults.analysis || stepResults.decomposition) && (
+        {optimizedResult && (
+          <TextField
+            label="可编辑的最终结果"
+            fullWidth
+            multiline
+            minRows={6}
+            value={optimizedResult}
+            onChange={event => setOptimizedResult(event.target.value)}
+            sx={{ mt: 2 }}
+          />
+        )}
+
+        {optimizedResult && (
           <Button
             variant="contained"
             color={handleCopy.isCopied ? "success" : "primary"}

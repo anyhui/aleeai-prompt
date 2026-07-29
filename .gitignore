@@ -1,5 +1,5 @@
-node_modules
+node_modules/
+dist/
 .env
-dist
-.env
-作为一个高效的AI提示优化专家，请使用以下指南优化提示词，以提高效率和质量：.ini
+.env.*
+!.env.example

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
 import { Toolbar, CssBaseline, Container, Typography, Box } from '@mui/material'
-import { Link as RouterLink } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import { StyledAppBar, StyledTitle, StyledNavButton, MainContainer, Footer, RootBox } from './styles/App.styles'
 import DonateButton from './components/DonateButton'
@@ -21,6 +19,25 @@ import { AppProvider } from './context/AppContext'
 function App() {
   // 使用主题名称来管理当前主题
   const [currentTheme, setCurrentTheme] = useState('default');
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (event, nextPath) => {
+    event.preventDefault();
+    window.history.pushState({}, '', nextPath);
+    setPath(nextPath);
+  };
+
+  const page = path === '/generator'
+    ? <PromptGenerator />
+    : path === '/optimizer'
+      ? <PromptOptimizer />
+      : <PromptLibrary />;
 
   // 处理主题变更
   const handleThemeChange = (themeName) => {
@@ -55,13 +72,13 @@ function App() {
                 justifyContent: { xs: 'center', sm: 'flex-end' },
                 width: { xs: '100%', sm: 'auto' }
               }}>
-                <StyledNavButton color="inherit" component={RouterLink} to="/">
+                <StyledNavButton color="inherit" href="/" onClick={event => navigate(event, '/')}>
                   提示词库
                 </StyledNavButton>
-                <StyledNavButton color="inherit" component={RouterLink} to="/generator">
+                <StyledNavButton color="inherit" href="/generator" onClick={event => navigate(event, '/generator')}>
                   生成器
                 </StyledNavButton>
-                <StyledNavButton color="inherit" component={RouterLink} to="/optimizer">
+                <StyledNavButton color="inherit" href="/optimizer" onClick={event => navigate(event, '/optimizer')}>
                   优化器
                 </StyledNavButton>
                 <ThemeManager onThemeChange={handleThemeChange} />
@@ -70,11 +87,7 @@ function App() {
           </StyledAppBar>
 
           <MainContainer component="main">
-            <Routes>
-              <Route path="/" element={<PromptLibrary />} />
-              <Route path="/generator" element={<PromptGenerator />} />
-              <Route path="/optimizer" element={<PromptOptimizer />} />
-            </Routes>
+            {page}
           </MainContainer>
 
           <Footer component="footer">

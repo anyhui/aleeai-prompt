@@ -17,6 +17,7 @@ function PromptGenerator() {
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [formData, setFormData] = useState({});
   const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [outputTemplates, setOutputTemplates] = useState(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [currentFields, setCurrentFields] = useState([]);
@@ -40,7 +41,7 @@ function PromptGenerator() {
         ]);
         setTemplates(presetsData.templates);
         setCategories(presetsData.categories);
-        window.outputTemplates = templatesData; // 存储模板数据
+        setOutputTemplates(templatesData);
       } catch (error) {
         console.error('Error loading data:', error);
         setError('加载数据失败，请刷新页面重试');
@@ -99,15 +100,15 @@ function PromptGenerator() {
     if (!templates[selectedTemplate]) return;
     setCurrentFields(currentTemplateFields);
     
-    const newFormData = {};
     const allFieldIds = currentTemplateFields.map(f => f.id);
-    Object.keys(formData).forEach(key => {
-      if (allFieldIds.includes(key)) {
-        newFormData[key] = formData[key];
-      }
+    setFormData(previous => {
+      const next = {};
+      Object.keys(previous).forEach(key => {
+        if (allFieldIds.includes(key)) next[key] = previous[key];
+      });
+      return next;
     });
-    setFormData(newFormData);
-  }, [currentTemplateFields, formData, templates, selectedTemplate]);
+  }, [currentTemplateFields, templates, selectedTemplate]);
 
   if (loading) {
     return <PromptGeneratorSkeleton />
@@ -128,7 +129,7 @@ function PromptGenerator() {
     setHasGenerated(true);
 
     // 获取选定模板的输出格式
-    const templateData = window.outputTemplates?.templates?.[selectedTemplate];
+    const templateData = outputTemplates?.templates?.[selectedTemplate];
     if (!templateData) {
       setError('模板数据加载失败');
       return;
@@ -354,8 +355,8 @@ function PromptGenerator() {
                 multiline
                 rows={4}
                 value={generatedPrompt}
+                onChange={(event) => setGeneratedPrompt(event.target.value)}
                 placeholder="在下方填写相关信息后，点击生成按钮获取提示词"
-                InputProps={{ readOnly: true }}
                 sx={{ mb: 2 }}
               />
               <FlexBox sx={{ gap: 2 }}>

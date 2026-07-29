@@ -7,33 +7,23 @@
 export const apiConfig = {
   // 默认API端点
   defaultEndpoints: [
-    { label: 'OpenAI', value: 'https://api.openai.com/v1/chat/completions' },
-    { label: 'Anthropic', value: 'https://api.anthropic.com/v1/messages' },
-    { label: 'Azure OpenAI', value: 'https://your-resource.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2023-05-15' },
-    { label: 'Deepseek', value: 'https://api.deepseek.com/v1/chat/completions' },
-    { label: 'SiliconFlow', value: 'https://api.siliconflow.cn/v1/chat/completions' },
-    { label: '自定义', value: 'custom' }
+    { label: 'OpenAI 兼容端点示例', value: 'https://api.openai.com/v1/chat/completions' },
+    { label: 'DeepSeek 兼容端点示例', value: 'https://api.deepseek.com/v1/chat/completions' },
+    { label: 'SiliconFlow 兼容端点示例', value: 'https://api.siliconflow.cn/v1/chat/completions' }
   ],
   
   // 默认模型选项
   defaultModels: [
-    { label: 'GPT-4', value: 'gpt-4' },
-    { label: 'GPT-4 Turbo', value: 'gpt-4-1106-preview' },
-    { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
-    { label: 'Claude 2.1', value: 'claude-2.1' },
-    { label: 'Claude Instant', value: 'claude-instant-1.2' },
-    { label: 'Deepseek-Chat', value: 'deepseek-chat' },
-    { label: 'Deepseek-Coder', value: 'deepseek-reasoner' },
-    { label: 'SiliconFlow-deepseek-V2.5', value: 'deepseek-ai/DeepSeek-V2.5' },
-    { label: 'SiliconFlow-deepseek-V3', value: 'deepseek-ai/DeepSeek-V3' },
-    { label: 'SiliconFlow-deepseek-R1', value: 'deepseek-ai/DeepSeek-R1' }
+    { label: '示例：gpt-4.1-mini', value: 'gpt-4.1-mini' },
+    { label: '示例：deepseek-chat', value: 'deepseek-chat' },
+    { label: '示例：deepseek-reasoner', value: 'deepseek-reasoner' }
   ],
   
   // 默认API配置
   defaultConfig: {
-    apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions',
-    model: import.meta.env.VITE_DEFAULT_MODEL || 'gpt-4',
-    apiKey: import.meta.env.VITE_API_KEY || import.meta.env.VITE_DEFAULT_API_KEY || ''
+    apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4.1-mini',
+    apiKey: ''
   }
 };
 
@@ -99,44 +89,6 @@ export const featureConfig = {
     enabled: true,
     autoSave: true,
     compareEnabled: true
-  }
-};
-
-// 性能配置
-export const performanceConfig = {
-  // 请求限制
-  rateLimit: {
-    maxRequests: parseInt(import.meta.env.VITE_MAX_REQUESTS) || 100,
-    timeWindow: parseInt(import.meta.env.VITE_RATE_LIMIT) || 60,
-    enabled: import.meta.env.VITE_ENABLE_RATE_LIMIT === 'true' || false
-  },
-  
-  // 缓存配置
-  cache: {
-    enabled: true,
-    maxAge: 3600, // 缓存有效期（秒）
-    maxSize: 100  // 最大缓存条目数
-  }
-};
-
-// 安全配置
-export const securityConfig = {
-  // CORS配置
-  cors: {
-    origin: import.meta.env.VITE_CORS_ORIGIN || '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization']
-  },
-  
-  // 内容安全策略
-  contentSecurity: {
-    enabled: true,
-    policy: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:']
-    }
   }
 };
 

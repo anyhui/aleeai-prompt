@@ -1,5 +1,4 @@
 import js from '@eslint/js'
-import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
  
 export default [
@@ -22,27 +21,24 @@ export default [
         console: 'readonly',
         navigator: 'readonly',
         TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
+        URL: 'readonly',
+        Response: 'readonly',
+        ReadableStream: 'readonly',
+        AbortController: 'readonly',
+        DOMException: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly'
       }
     },
-    settings: {
-      react: {
-        version: 'detect'
-      }
-    },
     plugins: {
-      react,
       'react-hooks': reactHooks
     },
     rules: {
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off',
-      'react/jsx-uses-vars': 'error',
-      'react/jsx-uses-react': 'off',
-      'react/react-in-jsx-scope': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn'
     }

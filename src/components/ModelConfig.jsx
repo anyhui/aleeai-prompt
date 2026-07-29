@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Alert, CircularProgress, Link } from '@mui/material';
+import { Box, Typography, Alert, CircularProgress } from '@mui/material';
 import { apiConfig } from '../config/appConfig';
 import { validateConfig, checkApiConnection as checkApiConnectionService } from '../services/apiService';
 import { SelectInput, TextInput, SliderInput, PresetInput } from './common/FormComponents';
@@ -136,7 +136,7 @@ const ModelConfig = ({
           borderColor: 'error.main'
         }}
       >
-        如果默认KEY失效，可以注册自己的KEY使用。
+        BYOK：密钥仅保存在当前页面的 React 内存中，刷新或关闭页面即清除，不写入本地存储。
       </Typography>
       <Typography 
         variant="body2" 
@@ -152,22 +152,7 @@ const ModelConfig = ({
           borderColor: 'error.main'
         }}
       >
-        免费注册 &gt;&gt;&gt;
-        <Link 
-          href="https://cloud.siliconflow.cn/i/VHoWjuwZ" 
-          target="_blank" 
-          rel="noopener"
-          sx={{
-            mx: 1,
-            textDecoration: 'none',
-            '&:hover': {
-              textDecoration: 'underline'
-            }
-          }}
-        >
-          硅基流动
-        </Link>
-        &lt;&lt;&lt;获取KEY
+        浏览器会把密钥和提示词直接发送到所填服务商。生产使用建议部署自有鉴权反向代理，不要向公共静态站点提供共享密钥。
       </Typography>
       <SliderInput
         label="Temperature (创造性程度)"
